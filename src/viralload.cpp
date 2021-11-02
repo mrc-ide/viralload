@@ -83,7 +83,7 @@ double vl_distribution_day(rng_state_type& state,
   vl_tab[0] += never_infected_tested;
 
   double ret = 0.0;
-  for (int i = 0; i < observed_vl.size(); ++i) {
+  for (size_t i = 0; i < observed_vl.size(); ++i) {
     ret += observed_vl[i] *
       std::log(vl_tab[i] / static_cast<double>(tested_population));
   }
@@ -94,7 +94,7 @@ double vl_distribution_day(rng_state_type& state,
 [[cpp11::register]]
 cpp11::writable::doubles vl_distribution(cpp11::integers days,
                                          const std::vector<double>& infecteds,
-                                         const std::vector<double>& observed_vl,
+                                         cpp11::list r_observed_vl,
                                          int population,
                                          int tested_population,
                                          cpp11::list r_pars) {
@@ -125,11 +125,16 @@ cpp11::writable::doubles vl_distribution(cpp11::integers days,
   // before we access anything. Probably also best to take observed_vl
   // as list.
 
+  std::vector<std::vector<double>> observed_vl;
+  for (int i = 0; i < n; ++i) {
+    observed_vl.push_back(cpp11::as_cpp<std::vector<double>>(r_observed_vl[i]));
+  }
+
   cpp11::writable::doubles ret(n);
   for (int i = 0; i < n; ++i) {
-    observed_vl_i = cpp::as_cpp<std::vector<double>>(observed_vl[i]);
     ret[i] = vl_distribution_day(rng.state(i),
-                                 days[i], infecteds, cum_infecteds, observed_vl,
+                                 days[i], infecteds, cum_infecteds,
+                                 observed_vl[i],
                                  population, tested_population, pars);
   }
 
