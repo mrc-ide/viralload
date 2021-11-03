@@ -6,10 +6,17 @@
 #include <R_ext/Visibility.h>
 
 // viralload.cpp
-double vl_calculate(int day, cpp11::doubles r_infecteds, cpp11::doubles r_cum_infecteds, cpp11::doubles observed, int population, int tested_population, cpp11::list r_pars);
-extern "C" SEXP _viralload_vl_calculate(SEXP day, SEXP r_infecteds, SEXP r_cum_infecteds, SEXP observed, SEXP population, SEXP tested_population, SEXP r_pars) {
+cpp11::sexp rng_init(int n_threads, cpp11::sexp seed);
+extern "C" SEXP _viralload_rng_init(SEXP n_threads, SEXP seed) {
   BEGIN_CPP11
-    return cpp11::as_sexp(vl_calculate(cpp11::as_cpp<cpp11::decay_t<int>>(day), cpp11::as_cpp<cpp11::decay_t<cpp11::doubles>>(r_infecteds), cpp11::as_cpp<cpp11::decay_t<cpp11::doubles>>(r_cum_infecteds), cpp11::as_cpp<cpp11::decay_t<cpp11::doubles>>(observed), cpp11::as_cpp<cpp11::decay_t<int>>(population), cpp11::as_cpp<cpp11::decay_t<int>>(tested_population), cpp11::as_cpp<cpp11::decay_t<cpp11::list>>(r_pars)));
+    return cpp11::as_sexp(rng_init(cpp11::as_cpp<cpp11::decay_t<int>>(n_threads), cpp11::as_cpp<cpp11::decay_t<cpp11::sexp>>(seed)));
+  END_CPP11
+}
+// viralload.cpp
+double vl_calculate(int day, cpp11::doubles r_infecteds, cpp11::doubles r_cum_infecteds, cpp11::doubles observed, int population, int tested_population, cpp11::list r_pars, cpp11::sexp r_rng);
+extern "C" SEXP _viralload_vl_calculate(SEXP day, SEXP r_infecteds, SEXP r_cum_infecteds, SEXP observed, SEXP population, SEXP tested_population, SEXP r_pars, SEXP r_rng) {
+  BEGIN_CPP11
+    return cpp11::as_sexp(vl_calculate(cpp11::as_cpp<cpp11::decay_t<int>>(day), cpp11::as_cpp<cpp11::decay_t<cpp11::doubles>>(r_infecteds), cpp11::as_cpp<cpp11::decay_t<cpp11::doubles>>(r_cum_infecteds), cpp11::as_cpp<cpp11::decay_t<cpp11::doubles>>(observed), cpp11::as_cpp<cpp11::decay_t<int>>(population), cpp11::as_cpp<cpp11::decay_t<int>>(tested_population), cpp11::as_cpp<cpp11::decay_t<cpp11::list>>(r_pars), cpp11::as_cpp<cpp11::decay_t<cpp11::sexp>>(r_rng)));
   END_CPP11
 }
 // viralload.cpp
@@ -22,7 +29,8 @@ extern "C" SEXP _viralload_vl_distribution(SEXP days, SEXP infecteds, SEXP r_obs
 
 extern "C" {
 static const R_CallMethodDef CallEntries[] = {
-    {"_viralload_vl_calculate",    (DL_FUNC) &_viralload_vl_calculate,    7},
+    {"_viralload_rng_init",        (DL_FUNC) &_viralload_rng_init,        2},
+    {"_viralload_vl_calculate",    (DL_FUNC) &_viralload_vl_calculate,    8},
     {"_viralload_vl_distribution", (DL_FUNC) &_viralload_vl_distribution, 6},
     {NULL, NULL, 0}
 };

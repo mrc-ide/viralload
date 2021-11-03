@@ -2,7 +2,46 @@
 #include <vector>
 #include <dust/random/random.hpp>
 
+// TODO: move into dust/interface/random.hpp
+#include <cstring>
+#include <dust/interface/random.hpp>
+
+// This will move into dust, eventually probably needs to play nice
+// with the R-facing RNG as it is literally the same thing.
+namespace dust {
+namespace random {
+template <typename rng_state_type>
+SEXP rng_init(int n_threads, cpp11::sexp r_seed) {
+  // TODO: we need to pop this into dust/random/r.hpp or similar
+  auto seed = dust::interface::as_rng_seed<rng_state_type>(r_seed);
+  auto *rng = new prng<rng_state_type>(n_threads, seed);
+  auto ret = cpp11::external_pointer<prng<rng_state_type>>(rng);
+  return ret;
+}
+
+template <typename rng_state_type>
+prng<rng_state_type>* rng_get(cpp11::sexp ptr, int n_threads) {
+  auto *rng =
+    cpp11::as_cpp<cpp11::external_pointer<prng<rng_state_type>>>(ptr).get();
+  if (n_threads > 0) {
+    if (static_cast<int>(rng->size()) < n_threads) {
+      cpp11::stop("Requested a rng with %d threads but only have %d",
+                  n_threads, rng->size());
+    }
+  }
+  return rng;
+}
+
+}
+}
+
 typedef dust::random::xoroshiro128plus_state rng_state_type;
+
+[[cpp11::register]]
+cpp11::sexp rng_init(int n_threads, cpp11::sexp seed) {
+  return dust::random::rng_init<rng_state_type>(n_threads, seed);
+}
+
 
 struct vl_parameters {
   double a_bar;
@@ -171,10 +210,11 @@ double vl_calculate(int day, cpp11::doubles r_infecteds,
                     cpp11::doubles observed,
                     int population,
                     int tested_population,
-                    cpp11::list r_pars) {
+                    cpp11::list r_pars,
+                    cpp11::sexp r_rng) {
   const auto pars = create_pars(r_pars);
-  auto rng = dust::random::prng<rng_state_type>(1, 42);
-  return vl_calculate2(rng.state(0),
+  auto rng = dust::random::rng_get<rng_state_type>(r_rng, 1);
+  return vl_calculate2(rng->state(0),
                        day,
                        REAL(r_infecteds),
                        REAL(r_cum_infecteds),
