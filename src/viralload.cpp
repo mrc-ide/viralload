@@ -31,6 +31,7 @@ double vl_distribution_day(rng_state_type& state,
                            int population,
                            int tested_population,
                            const vl_parameters& pars) {
+  using namespace dust::random;
   // day will come in from R and so be base-1, do the conversion only here
   day--;
   const auto proportion_ever_infected = cum_infecteds[day] / population;
@@ -45,29 +46,20 @@ double vl_distribution_day(rng_state_type& state,
     prob[i] = infecteds[day - i] / cum_infecteds[day];
   }
 
-  // TODO: this needs implementing:
-  // std::vector<double> t_sample =
-  //   dust::random::multinom<double>(state, ever_infected_tested, prob);
-  std::vector<double>
-    t_sample(prob.size(), 1 / static_cast<double>(prob.size()));
+  std::vector<double> t_sample = multinomial(state, ever_infected_tested, prob);
 
-  // NOTE: 30 here is an upper bound and is "never going to happen"
-  // territory. We expect this to max out about 11 (plus 6 for our
-  // negative values)
-  std::vector<double> vl_tab(30, 0.0);
+  // Assume that the first vl_offset cases are the negatives
+  const int vl_offset = 6; // fixed for now, could be a parameter
+  std::vector<double> vl_tab(observed_vl.size(), 0.0);
 
   int t_sample_curr = 0;
   int t_sample_seen = 0;
   for (int i = 0; i < ever_infected_tested; ++i) {
-    const double a =
-      dust::random::normal<double>(state, pars.a_bar, pars.a_sigma);
-    const double b =
-      dust::random::normal<double>(state, pars.b_bar, pars.b_sigma);
-    const double tmax =
-      dust::random::normal<double>(state, pars.tmax_bar, pars.tmax_sigma);
-    const double log_vlmax =
-      dust::random::normal<double>(state, pars.log_vlmax_bar,
-                                   pars.log_vlmax_sigma);
+    const double a = normal<double>(state, pars.a_bar, pars.a_sigma);
+    const double b = normal<double>(state, pars.b_bar, pars.b_sigma);
+    const double tmax = normal<double>(state, pars.tmax_bar, pars.tmax_sigma);
+    const double log_vlmax = normal<double>(state, pars.log_vlmax_bar,
+                                            pars.log_vlmax_sigma);
 
     if (t_sample_seen > t_sample[t_sample_curr]) {
       t_sample_curr++;
@@ -77,7 +69,10 @@ double vl_distribution_day(rng_state_type& state,
     }
 
     const auto vl = vl_func(a, b, tmax, t_sample_curr, log_vlmax);
-    vl_tab[std::max(vl + 6, 0)]++;
+    const auto vl_tab_pos = std::max(vl + vl_offset, 0);
+    if (static_cast<size_t>(vl_tab_pos) < vl_tab.size()) {
+      vl_tab[vl_tab_pos]++;
+    }
   }
 
   vl_tab[0] += never_infected_tested;
@@ -118,23 +113,31 @@ cpp11::writable::doubles vl_distribution(cpp11::integers days,
   const int n = days.size();
 
   // TODO: to do this properly, we should pass the state around
-  // (either directly as a vector of raws or as a pointer)
+  // (either directly as a vector of raws or as a pointer). However,
+  // we might update to push the parallelisation into the underlying
+  // function, which will simplify this considerably.
+  //
+  // TODO: Add some helpers to create pointers on the R side with some
+  // light validation.
   auto rng = dust::random::prng<rng_state_type>(n, 42);
 
   // TODO: some validation here that everything is the right size
   // before we access anything. Probably also best to take observed_vl
   // as list.
-
+  //
+  // TODO: we could do this more efficiently but that may not matter
+  // much soon.
   std::vector<std::vector<double>> observed_vl;
-  for (int i = 0; i < n; ++i) {
+  for (int i = 0; i < r_observed_vl.size(); ++i) {
     observed_vl.push_back(cpp11::as_cpp<std::vector<double>>(r_observed_vl[i]));
   }
 
   cpp11::writable::doubles ret(n);
   for (int i = 0; i < n; ++i) {
+    const auto j = days[i] - 1;
     ret[i] = vl_distribution_day(rng.state(i),
                                  days[i], infecteds, cum_infecteds,
-                                 observed_vl[i],
+                                 observed_vl[j],
                                  population, tested_population, pars);
   }
 
