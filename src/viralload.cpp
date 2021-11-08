@@ -1,32 +1,37 @@
-#include <cpp11.hpp>
+#include <numeric>
 #include <vector>
-#include <dust/random/random.hpp>
 
-// TODO: move into dust/interface/random.hpp
-#include <cstring>
-#include <dust/interface/random.hpp>
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
+#include <cpp11.hpp>
+
+#include <dust/random/random.hpp>
+#include <dust/r/random.hpp>
 
 // This will move into dust, eventually probably needs to play nice
 // with the R-facing RNG as it is literally the same thing.
 namespace dust {
 namespace random {
+namespace r {
 template <typename rng_state_type>
-SEXP rng_init(int n_threads, cpp11::sexp r_seed) {
+SEXP rng_init(int n, cpp11::sexp r_seed) {
   // TODO: we need to pop this into dust/random/r.hpp or similar
-  auto seed = dust::interface::as_rng_seed<rng_state_type>(r_seed);
-  auto *rng = new prng<rng_state_type>(n_threads, seed);
+  auto seed = dust::r::as_rng_seed<rng_state_type>(r_seed);
+  auto *rng = new prng<rng_state_type>(n, seed);
   auto ret = cpp11::external_pointer<prng<rng_state_type>>(rng);
   return ret;
 }
 
 template <typename rng_state_type>
-prng<rng_state_type>* rng_get(cpp11::sexp ptr, int n_threads) {
+prng<rng_state_type>* rng_get(cpp11::sexp ptr, int n) {
   auto *rng =
     cpp11::as_cpp<cpp11::external_pointer<prng<rng_state_type>>>(ptr).get();
-  if (n_threads > 0) {
-    if (static_cast<int>(rng->size()) < n_threads) {
-      cpp11::stop("Requested a rng with %d threads but only have %d",
-                  n_threads, rng->size());
+  if (n > 0) {
+    if (static_cast<int>(rng->size()) < n) {
+      cpp11::stop("Requested a rng with %d streams but only have %d",
+                  n, rng->size());
     }
   }
   return rng;
@@ -34,16 +39,27 @@ prng<rng_state_type>* rng_get(cpp11::sexp ptr, int n_threads) {
 
 }
 }
+}
+
+namespace viralload {
 
 typedef dust::random::xoroshiro128plus_state rng_state_type;
 
-[[cpp11::register]]
-cpp11::sexp rng_init(int n_threads, cpp11::sexp seed) {
-  return dust::random::rng_init<rng_state_type>(n_threads, seed);
+double double_from_list(cpp11::list x, const char * name) {
+  return cpp11::as_cpp<double>(x[name]);
 }
 
-
-struct vl_parameters {
+struct parameters {
+  parameters(cpp11::list r_pars) :
+    a_bar(double_from_list(r_pars, "a_bar")),
+    a_sigma(double_from_list(r_pars, "a_sigma")),
+    b_bar(double_from_list(r_pars, "b_bar")),
+    b_sigma(double_from_list(r_pars, "b_sigma")),
+    tmax_bar(double_from_list(r_pars, "tmax_bar")),
+    tmax_sigma(double_from_list(r_pars, "tmax_sigma")),
+    log_vlmax_bar(double_from_list(r_pars, "log_vlmax_bar")),
+    log_vlmax_sigma(double_from_list(r_pars, "log_vlmax_sigma")) {
+  }
   double a_bar;
   double a_sigma;
   double b_bar;
@@ -54,6 +70,20 @@ struct vl_parameters {
   double log_vlmax_sigma;
 };
 
+struct observed {
+  observed(cpp11::list x) :
+    size(cpp11::as_cpp<int>(x["size"])),
+    length(INTEGER(cpp11::as_cpp<cpp11::integers>(x["length"]))),
+    offset(INTEGER(cpp11::as_cpp<cpp11::integers>(x["offset"]))),
+    value(REAL(cpp11::as_cpp<cpp11::doubles>(x["value"]))) {
+  }
+  const int size;
+  const int * length;
+  const int * offset;
+  const double * value;
+};
+
+// TODO: a nicer name here would be good
 int vl_func(double a, double b, double tmax, double t, double log_vlmax) {
   const auto tau = t - tmax;
   const auto value = std::log10(pow(10, log_vlmax) * (a + b) /
@@ -61,111 +91,39 @@ int vl_func(double a, double b, double tmax, double t, double log_vlmax) {
   return std::floor(value);
 }
 
-double vl_distribution_day(rng_state_type& state,
-                           int day,
-                           const std::vector<double>& infecteds,
-                           const std::vector<double>& cum_infecteds,
-                           const std::vector<double>& observed_vl,
-                           int population,
-                           int tested_population,
-                           const vl_parameters& pars) {
-  using namespace dust::random;
-  // day will come in from R and so be base-1, do the conversion only here
-  day--;
-  const auto proportion_ever_infected = cum_infecteds[day] / population;
-  const auto ever_infected_tested =
-    std::round(tested_population * proportion_ever_infected);
-  const auto never_infected_tested = tested_population - ever_infected_tested;
+// TODO: if we reuse these vectors (infecteds, cum_infecteds) we can
+// compute some of these things ahead of time.
+//
+// TODO: can pass just 1 cum_infecteds
 
-  std::vector<double> prob(day + 1);
-  for (int i = 0; i <= day; ++i) {
-    // TODO: check that day - i is correct here, fairly sure it is.
-    // infecteds[day:1] / cum_infecteds[day]
-    prob[i] = infecteds[day - i] / cum_infecteds[day];
-  }
-
-  std::vector<double> t_sample = multinomial(state, ever_infected_tested, prob);
-
-  // Assume that the first vl_offset cases are the negatives
-  const int vl_offset = 6; // fixed for now, could be a parameter
-  std::vector<double> vl_tab(observed_vl.size(), 0.0);
-
-  int t_sample_curr = 0;
-  int t_sample_seen = 0;
-  for (int i = 0; i < ever_infected_tested; ++i) {
-    const double a = normal<double>(state, pars.a_bar, pars.a_sigma);
-    const double b = normal<double>(state, pars.b_bar, pars.b_sigma);
-    const double tmax = normal<double>(state, pars.tmax_bar, pars.tmax_sigma);
-    const double log_vlmax = normal<double>(state, pars.log_vlmax_bar,
-                                            pars.log_vlmax_sigma);
-
-    if (t_sample_seen > t_sample[t_sample_curr]) {
-      t_sample_curr++;
-      t_sample_seen = 0;
-    } else {
-      t_sample_seen++;
-    }
-
-    const auto vl = vl_func(a, b, tmax, t_sample_curr, log_vlmax);
-    const auto vl_tab_pos = std::max(vl + vl_offset, 0);
-    if (static_cast<size_t>(vl_tab_pos) < vl_tab.size()) {
-      vl_tab[vl_tab_pos]++;
-    }
-  }
-
-  vl_tab[0] += never_infected_tested;
-
-  double ret = 0.0;
-  for (size_t i = 0; i < observed_vl.size(); ++i) {
-    ret += observed_vl[i] *
-      std::log(vl_tab[i] / static_cast<double>(tested_population));
-  }
-
-  return ret;
-}
-
-vl_parameters create_pars(cpp11::list r_pars) {
-  return vl_parameters{cpp11::as_cpp<double>(r_pars["a_bar"]),
-                         cpp11::as_cpp<double>(r_pars["a_sigma"]),
-                         cpp11::as_cpp<double>(r_pars["b_bar"]),
-                         cpp11::as_cpp<double>(r_pars["b_sigma"]),
-                         cpp11::as_cpp<double>(r_pars["tmax_bar"]),
-                         cpp11::as_cpp<double>(r_pars["tmax_sigma"]),
-                         cpp11::as_cpp<double>(r_pars["log_vlmax_bar"]),
-                         cpp11::as_cpp<double>(r_pars["log_vlmax_sigma"])
-                         };
-}
-
-
-double vl_calculate2(rng_state_type& state,
-                     int day,
+double calculate_one(const int day,
                      const double* infecteds,
                      const double* cum_infecteds,
-                     const double* observed_vl,
-                     int observed_vl_size,
-                     int population,
-                     int tested_population,
-                     const vl_parameters& pars) {
-  using namespace dust::random;
-  // day will come in from R and so be base-1, do the conversion only here
-  day--;
-
-  // TODO: if we reuse these vectors (infecteds, cum_infecteds) we can
-  // compute some of these things ahead of time.
+                     const observed& viralload,
+                     const int population,
+                     const int tested_population,
+                     const parameters& pars,
+                     rng_state_type& state) {
   const auto proportion_ever_infected = cum_infecteds[day] / population;
   const auto ever_infected_tested =
     std::round(tested_population * proportion_ever_infected);
   const auto never_infected_tested = tested_population - ever_infected_tested;
 
-  // TODO: if we support non-normalised prob in multinomial, we can
-  // skip this
+  // NOTE: can be skipped
   std::vector<double> prob(day + 1);
   for (int i = 0; i <= day; ++i) {
     prob[i] = infecteds[day - i] / cum_infecteds[day];
   }
 
-  std::vector<double> t_sample = multinomial(state, ever_infected_tested, prob);
+  // Because this will run from openmp, we will crash if this fails
+  // for any reason.
+  std::vector<double> t_sample =
+    dust::random::multinomial(state, ever_infected_tested, prob);
 
+  const int observed_vl_size = viralload.length[day];
+  const double* observed_vl = viralload.value + viralload.offset[day];
+
+  // TODO: lots of integer arithmetic here
   // Assume that the first vl_offset cases are the negatives
   const int vl_offset = 6; // fixed for now, could be a parameter
   std::vector<double> vl_tab(observed_vl_size, 0.0);
@@ -173,11 +131,19 @@ double vl_calculate2(rng_state_type& state,
   int t_sample_curr = 0;
   int t_sample_seen = 0;
   for (int i = 0; i < ever_infected_tested; ++i) {
-    const double a = normal<double>(state, pars.a_bar, pars.a_sigma);
-    const double b = normal<double>(state, pars.b_bar, pars.b_sigma);
-    const double tmax = normal<double>(state, pars.tmax_bar, pars.tmax_sigma);
-    const double log_vlmax = normal<double>(state, pars.log_vlmax_bar,
-                                            pars.log_vlmax_sigma);
+    // We'll tidy this up later, see
+    // https://github.com/mrc-ide/dust/issues/323
+    using dust::random::normal;
+    constexpr auto algorithm = dust::random::algorithm::normal::ziggurat;
+    const double a =
+      normal<double, algorithm>(state, pars.a_bar, pars.a_sigma);
+    const double b =
+      normal<double, algorithm>(state, pars.b_bar, pars.b_sigma);
+    const double tmax =
+      normal<double, algorithm>(state, pars.tmax_bar, pars.tmax_sigma);
+    const double log_vlmax =
+      normal<double, algorithm>(state, pars.log_vlmax_bar,
+                                pars.log_vlmax_sigma);
 
     if (t_sample_seen > t_sample[t_sample_curr]) {
       t_sample_curr++;
@@ -204,74 +170,135 @@ double vl_calculate2(rng_state_type& state,
   return ret;
 }
 
-[[cpp11::register]]
-double vl_calculate(int day, cpp11::doubles r_infecteds,
-                    cpp11::doubles r_cum_infecteds,
-                    cpp11::doubles observed,
-                    int population,
-                    int tested_population,
-                    cpp11::list r_pars,
-                    cpp11::sexp r_rng) {
-  const auto pars = create_pars(r_pars);
-  auto rng = dust::random::rng_get<rng_state_type>(r_rng, 1);
-  return vl_calculate2(rng->state(0),
-                       day,
-                       REAL(r_infecteds),
-                       REAL(r_cum_infecteds),
-                       REAL(observed),
-                       observed.size(),
-                       population,
-                       tested_population,
-                       pars);
+double calculate(const int start_day,
+                 const double * infecteds,
+                 const double * cum_infecteds,
+                 const observed& viralload,
+                 const int population,
+                 const int tested_population,
+                 const parameters& pars,
+                 dust::random::prng<rng_state_type>* rng,
+                 int n_threads) {
+  const int len = viralload.size - start_day + 1;
+  double ret = 0.0;
+#ifdef _OPENMP
+#pragma omp parallel for schedule(guided, 1) num_threads(n_threads) reduction(+:ret)
+#endif
+  for (int i = 0; i < len; ++i) {
+    // auto state& = rng->state(j);
+    // calculate last day first, will be slowest
+    const int day = viralload.size - i - 1;
+    const int j = i; // day - start_day;
+    double tmp = 0.0;
+    for (int k = 0; k < 10; ++k) {
+      tmp += calculate_one(day, infecteds, cum_infecteds,
+                           viralload, population, tested_population,
+                           pars, rng->state(j));
+    }
+    ret += tmp;
+  }
+  return ret;
+}
+
+double calculate2(const int start_day,
+                  const double * infecteds,
+                  const double * cum_infecteds,
+                  const observed& viralload,
+                  const int population,
+                  const int tested_population,
+                  const parameters& pars,
+                  dust::random::prng<rng_state_type>* rng,
+                  const int n_threads,
+                  const int *order) {
+  const int len = viralload.size - start_day + 1;
+  double ret = 0.0;
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static) num_threads(n_threads) reduction(+:ret)
+#endif
+  for (int i = 0; i < len; ++i) {
+    const int j = order[i] - 1;
+    const int day = start_day + j - 1;
+    ret += calculate_one(day, infecteds, cum_infecteds,
+                           viralload, population, tested_population,
+                           pars, rng->state(j));
+  }
+  return ret;
+}
+
 }
 
 [[cpp11::register]]
-cpp11::writable::doubles vl_distribution(cpp11::integers days,
-                                         const std::vector<double>& infecteds,
-                                         cpp11::list r_observed_vl,
-                                         int population,
-                                         int tested_population,
-                                         cpp11::list r_pars) {
-  const auto pars = create_pars(r_pars);
+cpp11::sexp rng_init(int n_threads, cpp11::sexp seed) {
+  return dust::random::r::rng_init<viralload::rng_state_type>(n_threads, seed);
+}
 
-  // Cumulative infected over time, just done once. Could accept this
-  // as an argument of course but then we rely on it being correct
-  // (this way it will always be ok)
-  auto cum_infecteds = infecteds;
-  for (size_t i = 1; i < infecteds.size(); ++i) {
-    cum_infecteds[i] += cum_infecteds[i - 1];
-  }
+// Interface to calculate just one day; we'll use this for debugging mostly
+[[cpp11::register]]
+double r_calculate_one(int r_day,
+                       cpp11::doubles r_infecteds,
+                       cpp11::doubles r_cum_infecteds,
+                       cpp11::list r_viralload,
+                       int population,
+                       int tested_population,
+                       cpp11::list r_pars,
+                       cpp11::sexp r_rng) {
+  const int day = r_day - 1;
+  const double * infecteds = REAL(r_infecteds);
+  const double * cum_infecteds = REAL(r_cum_infecteds);
+  const viralload::observed viralload(r_viralload);
+  const viralload::parameters pars(r_pars);
+  auto rng = dust::random::r::rng_get<viralload::rng_state_type>(r_rng, 1);
+  return viralload::calculate_one(day, infecteds, cum_infecteds,
+                                  viralload, population, tested_population,
+                                  pars, rng->state(0));
+}
 
-  const int n = days.size();
+[[cpp11::register]]
+double r_calculate(int r_start_day,
+                   cpp11::doubles r_infecteds,
+                   cpp11::doubles r_cum_infecteds,
+                   cpp11::list r_viralload,
+                   int population,
+                   int tested_population,
+                   cpp11::list r_pars,
+                   cpp11::sexp r_rng,
+                   int n_threads) {
+  // assert observed.size is same as (cum_)infecteds size
+  // assert start_day within range
+  const int start_day = r_start_day;
+  const double * infecteds = REAL(r_infecteds);
+  const double * cum_infecteds = REAL(r_cum_infecteds);
+  const viralload::observed viralload(r_viralload);
+  const viralload::parameters pars(r_pars);
+  auto rng = dust::random::r::rng_get<viralload::rng_state_type>(r_rng, 1);
 
-  // TODO: to do this properly, we should pass the state around
-  // (either directly as a vector of raws or as a pointer). However,
-  // we might update to push the parallelisation into the underlying
-  // function, which will simplify this considerably.
-  //
-  // TODO: Add some helpers to create pointers on the R side with some
-  // light validation.
-  auto rng = dust::random::prng<rng_state_type>(n, 42);
+  return viralload::calculate(start_day, infecteds, cum_infecteds,
+                              viralload, population, tested_population,
+                              pars, rng, n_threads);
+}
 
-  // TODO: some validation here that everything is the right size
-  // before we access anything. Probably also best to take observed_vl
-  // as list.
-  //
-  // TODO: we could do this more efficiently but that may not matter
-  // much soon.
-  std::vector<std::vector<double>> observed_vl;
-  for (int i = 0; i < r_observed_vl.size(); ++i) {
-    observed_vl.push_back(cpp11::as_cpp<std::vector<double>>(r_observed_vl[i]));
-  }
+[[cpp11::register]]
+double r_calculate2(int r_start_day,
+                    cpp11::doubles r_infecteds,
+                    cpp11::doubles r_cum_infecteds,
+                    cpp11::list r_viralload,
+                    int population,
+                    int tested_population,
+                    cpp11::list r_pars,
+                    cpp11::sexp r_rng,
+                    int n_threads,
+                    cpp11::integers r_order) {
+  // assert observed.size is same as (cum_)infecteds size
+  // assert start_day within range
+  const int start_day = r_start_day;
+  const double * infecteds = REAL(r_infecteds);
+  const double * cum_infecteds = REAL(r_cum_infecteds);
+  const viralload::observed viralload(r_viralload);
+  const viralload::parameters pars(r_pars);
+  auto rng = dust::random::r::rng_get<viralload::rng_state_type>(r_rng, 1);
+  const int * order = INTEGER(r_order);
 
-  cpp11::writable::doubles ret(n);
-  for (int i = 0; i < n; ++i) {
-    const auto j = days[i] - 1;
-    ret[i] = vl_distribution_day(rng.state(i),
-                                 days[i], infecteds, cum_infecteds,
-                                 observed_vl[j],
-                                 population, tested_population, pars);
-  }
-
-  return ret;
+  return viralload::calculate2(start_day, infecteds, cum_infecteds,
+                               viralload, population, tested_population,
+                               pars, rng, n_threads, order);
 }
