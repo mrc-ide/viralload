@@ -21,11 +21,29 @@ prepare_observed <- function(d) {
 
   len <- lengths(count)
   cutoff <- as.integer(vapply(d[len > 0], function(x) x$vl[[2]], ""))
+
+  cutoff <- NULL
+  for (i in which(len > 0)) {
+    vl <- d[[i]]$vl
+    if (vl[[1]] != "negative") {
+      stop(sprintf("Expected 'negative' for first value of vl in element %d",
+                   i))
+    }
+    if (is.null(cutoff)) {
+      cutoff <- as.integer(vl[[2]])
+    } else if (as.integer(vl[[2]]) != cutoff) {
+      stop(sprintf("Inconsistent first value of vl in element %d, expected %d",
+                   i, cutoff))
+    }
+    stopifnot(identical(
+      vl[2:length(vl)],
+      as.character(seq(cutoff, length.out = length(vl) - 1L))))
+  }
   if (length(unique(cutoff)) > 1) {
     stop("Inconsistent negative cut-off")
   }
-  cutoff <- -cutoff[[1]] + 1L
 
+  cutoff <- -cutoff + 1L
   ret <- list(size = length(len),
               first = which(len > 0)[[1]],
               cutoff = cutoff,

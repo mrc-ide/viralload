@@ -41,3 +41,53 @@ test_that("calculation is sum over days", {
                 dat$population, dat$tested_population, rng2)
   expect_equal(ll1, sum(ll2))
 })
+
+
+test_that("ensure rng has enough streams", {
+  dat <- reference()
+  observed <- prepare_observed(dat$observed)
+
+  rng <- rng_init(observed$size - 1, 42)
+  day <- 30L
+  expect_error(
+    r_likelihood_one(day, dat$pars, dat$infected, observed,
+                     dat$population, dat$tested_population,
+                     rng),
+    "Requested a rng with 100 streams but only have 99")
+})
+
+
+test_that("Check that infected is the correct size", {
+  dat <- reference()
+  observed <- prepare_observed(dat$observed)
+  expect_error(
+    log_likelihood(dat$pars, dat$infected[-1], observed,
+                   dat$population, dat$tested_population,
+                   rng_init(observed$size, 1)),
+    "Expected observed to have length '100'")
+})
+
+
+test_that("Check that we are given 'observed' object", {
+  dat <- reference()
+  observed <- prepare_observed(dat$observed)
+  expect_error(
+    log_likelihood(dat$pars, dat$infected, NULL,
+                   dat$population, dat$tested_population,
+                   rng1_init(observed$size, 1)),
+    "Expected an object of class 'observed' for 'observed'")
+})
+
+
+test_that("Check that cuttoff is consistent", {
+  dat <- reference()
+  obs <- dat$observed
+  obs[[52]] <- obs[[52]][-2, ]
+  expect_error(
+    prepare_observed(obs),
+    "Inconsistent first value of vl in element 52, expected -5")
+  obs[[13]] <- obs[[13]][-1, ]
+  expect_error(
+    prepare_observed(obs),
+    "Expected 'negative' for first value of vl in element 13")
+})
