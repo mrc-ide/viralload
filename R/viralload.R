@@ -5,7 +5,7 @@ tidy_observed <- function(d) {
   list(size = length(len),
        length = len,
        offset = cumsum(c(0L, len[-length(d)])),
-       value = unlist(d, FALSE, FALSE)) # int?
+       value = as.integer(unlist(d, FALSE, FALSE)))
 }
 
 schedule <- function(x, n_threads) {

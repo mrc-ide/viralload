@@ -75,12 +75,12 @@ struct observed {
     size(cpp11::as_cpp<int>(x["size"])),
     length(INTEGER(cpp11::as_cpp<cpp11::integers>(x["length"]))),
     offset(INTEGER(cpp11::as_cpp<cpp11::integers>(x["offset"]))),
-    value(REAL(cpp11::as_cpp<cpp11::doubles>(x["value"]))) {
+    value(INTEGER(cpp11::as_cpp<cpp11::integers>(x["value"]))) {
   }
   const int size;
   const int * length;
   const int * offset;
-  const double * value;
+  const int * value;
 };
 
 // TODO: a nicer name here would be good
@@ -121,12 +121,12 @@ double calculate_one(const int day,
     dust::random::multinomial(state, ever_infected_tested, prob);
 
   const int observed_vl_size = viralload.length[day];
-  const double* observed_vl = viralload.value + viralload.offset[day];
+  const int* observed_vl = viralload.value + viralload.offset[day];
 
   // TODO: lots of integer arithmetic here
   // Assume that the first vl_offset cases are the negatives
   const int vl_offset = 6; // fixed for now, could be a parameter
-  std::vector<double> vl_tab(observed_vl_size, 0.0);
+  std::vector<int> vl_tab(observed_vl_size, 0.0);
 
   int t_sample_curr = 0;
   int t_sample_seen = 0;
@@ -153,8 +153,8 @@ double calculate_one(const int day,
     }
 
     const auto vl = vl_func(a, b, tmax, t_sample_curr, log_vlmax);
-    const auto vl_tab_pos = std::max(vl + vl_offset, 0);
-    if (static_cast<size_t>(vl_tab_pos) < vl_tab.size()) {
+    const size_t vl_tab_pos = std::max(vl + vl_offset, 0);
+    if (vl_tab_pos < vl_tab.size()) {
       vl_tab[vl_tab_pos]++;
     }
   }
@@ -189,13 +189,9 @@ double calculate(const int start_day,
     // calculate last day first, will be slowest
     const int day = viralload.size - i - 1;
     const int j = i; // day - start_day;
-    double tmp = 0.0;
-    for (int k = 0; k < 10; ++k) {
-      tmp += calculate_one(day, infecteds, cum_infecteds,
-                           viralload, population, tested_population,
-                           pars, rng->state(j));
-    }
-    ret += tmp;
+    ret += calculate_one(day, infecteds, cum_infecteds,
+                         viralload, population, tested_population,
+                         pars, rng->state(j));
   }
   return ret;
 }
