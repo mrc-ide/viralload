@@ -8,10 +8,10 @@ r_calculate_one <- function(r_day, r_infecteds, r_cum_infecteds, r_viralload, po
   .Call(`_viralload_r_calculate_one`, r_day, r_infecteds, r_cum_infecteds, r_viralload, population, tested_population, r_pars, r_rng)
 }
 
-r_calculate <- function(r_start_day, r_infecteds, r_cum_infecteds, r_viralload, population, tested_population, r_pars, r_rng, n_threads) {
-  .Call(`_viralload_r_calculate`, r_start_day, r_infecteds, r_cum_infecteds, r_viralload, population, tested_population, r_pars, r_rng, n_threads)
+r_calculate <- function(r_start_day, r_infecteds, r_cum_infecteds, r_viralload, population, tested_population, r_pars, r_rng, n_threads, chunk_size) {
+  .Call(`_viralload_r_calculate`, r_start_day, r_infecteds, r_cum_infecteds, r_viralload, population, tested_population, r_pars, r_rng, n_threads, chunk_size)
 }
 
-r_calculate2 <- function(r_start_day, r_infecteds, r_cum_infecteds, r_viralload, population, tested_population, r_pars, r_rng, n_threads, r_order) {
-  .Call(`_viralload_r_calculate2`, r_start_day, r_infecteds, r_cum_infecteds, r_viralload, population, tested_population, r_pars, r_rng, n_threads, r_order)
+r_calculate2 <- function(r_days, r_infecteds, r_cum_infecteds, r_viralload, population, tested_population, r_pars, r_rng, n_threads, chunk_size) {
+  .Call(`_viralload_r_calculate2`, r_days, r_infecteds, r_cum_infecteds, r_viralload, population, tested_population, r_pars, r_rng, n_threads, chunk_size)
 }
