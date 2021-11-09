@@ -197,31 +197,6 @@ double calculate(const int start_day,
   return ret;
 }
 
-double calculate2(const int * days,
-                  const int days_size,
-                  const double * infecteds,
-                  const double * cum_infecteds,
-                  const observed& viralload,
-                  const int population,
-                  const int tested_population,
-                  const parameters& pars,
-                  dust::random::prng<rng_state_type>* rng,
-                  const int n_threads,
-                  const int chunk_size) {
-  double ret = 0.0;
-#ifdef _OPENMP
-#pragma omp parallel for schedule(static, chunk_size) num_threads(n_threads) reduction(+:ret)
-#endif
-  for (int i = 0; i < days_size; ++i) {
-    auto& state = rng->state(i);
-    const int day = days[i];
-    ret += calculate_one(day, infecteds, cum_infecteds,
-                         viralload, population, tested_population,
-                         pars, state);
-  }
-  return ret;
-}
-
 }
 
 [[cpp11::register]]
@@ -273,30 +248,4 @@ double r_calculate(int r_start_day,
   return viralload::calculate(start_day, infecteds, cum_infecteds,
                               viralload, population, tested_population,
                               pars, rng, n_threads, chunk_size);
-}
-
-[[cpp11::register]]
-double r_calculate2(cpp11::integers r_days,
-                    cpp11::doubles r_infecteds,
-                    cpp11::doubles r_cum_infecteds,
-                    cpp11::list r_viralload,
-                    int population,
-                    int tested_population,
-                    cpp11::list r_pars,
-                    cpp11::sexp r_rng,
-                    int n_threads,
-                    int chunk_size) {
-  // assert observed.size is same as (cum_)infecteds size
-  // assert start_day within range
-  const int * days = INTEGER(r_days);
-  const int days_size = r_days.size();
-  const double * infecteds = REAL(r_infecteds);
-  const double * cum_infecteds = REAL(r_cum_infecteds);
-  const viralload::observed viralload(r_viralload);
-  const viralload::parameters pars(r_pars);
-  auto rng = dust::random::r::rng_get<viralload::rng_state_type>(r_rng, 1);
-
-  return viralload::calculate2(days, days_size, infecteds, cum_infecteds,
-                               viralload, population, tested_population,
-                               pars, rng, n_threads, chunk_size);
 }
