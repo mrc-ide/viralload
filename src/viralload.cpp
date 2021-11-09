@@ -214,8 +214,8 @@ std::vector<double> cumsum(cpp11::doubles x) {
 
 // TODO: this one will go into dust soon enough
 [[cpp11::register]]
-cpp11::sexp rng_init(int n_threads, cpp11::sexp seed) {
-  return dust::random::r::rng_init<viralload::rng_state_type>(n_threads, seed);
+cpp11::sexp r_rng_init(int n_streams, cpp11::sexp seed) {
+  return dust::random::r::rng_init<viralload::rng_state_type>(n_streams, seed);
 }
 
 // Interface to calculate just one day; we'll use this for debugging mostly

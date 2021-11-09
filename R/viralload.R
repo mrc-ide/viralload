@@ -1,3 +1,32 @@
+##' Compute likelihood
+##'
+##' @title Compute likelihood
+##'
+##' @param pars Named list of parameters. Must have elements `a_bar`,
+##'   `a_sigma`, `b_bar`, `b_sigma`, `tmax_bar`, `tmax_sigma`,
+##'   `log_vlmax_bar`, `log_vlmax_sigma`
+##'
+##' @param infected Vector of number of simulated infections. Must
+##'   have length `observed$size` (this is checked)
+##'
+##' @param observed An `observed` object, created by `prepare_observed`
+##'
+##' @param population Integer, size of population
+##'
+##' @param tested_population Integer, size of tested population
+##'
+##' @param rng A random number object, created by `rng_init` (this
+##'   will swap out soon for a dust function)
+##'
+##' @param n_threads Number of threads to run on, if openmp available.
+##'   See [dust::dust_openmp_threads] for guidance
+##'
+##' @param chunk_size The size of the chunks to run the parallel jobs
+##'   in.  The optimal value here will vary depending on your problem
+##'   and number of threads. '5' seems like a good guess.
+##'
+##' @export
+##' @return A single numeric log-likelihood value
 log_likelihood <- function(pars, infected, observed,
                            population, tested_population, rng,
                            n_threads = 1L, chunk_size = NULL) {
@@ -14,17 +43,27 @@ log_likelihood <- function(pars, infected, observed,
                n_threads, chunk_size)
 }
 
-
-prepare_observed <- function(d) {
-  count <- lapply(d, function(x)
+##' Prepare observed data
+##'
+##' @title Prepare observed data
+##'
+##' @param observed A list of `data.frame`s, each with columns `vl`
+##'   and `count`
+##'
+##' @return An object of class `observed` to pass through to
+##'   [viralload::log_liklihood]. **DO NOT ALTER THIS OBJECT**
+##'
+##' @export
+prepare_observed <- function(observed) {
+  count <- lapply(observed, function(x)
     as.numeric(x$count) %||% numeric(0))
 
   len <- lengths(count)
-  cutoff <- as.integer(vapply(d[len > 0], function(x) x$vl[[2]], ""))
+  cutoff <- as.integer(vapply(observed[len > 0], function(x) x$vl[[2]], ""))
 
   cutoff <- NULL
   for (i in which(len > 0)) {
-    vl <- d[[i]]$vl
+    vl <- observed[[i]]$vl
     if (vl[[1]] != "negative") {
       stop(sprintf("Expected 'negative' for first value of vl in element %d",
                    i))
@@ -52,4 +91,20 @@ prepare_observed <- function(d) {
               value = as.integer(unlist(count, FALSE, FALSE)))
   class(ret) <- "observed"
   ret
+}
+
+##' Create a streaming RNG object
+##'
+##' @title Create RNG object
+##'
+##' @param n_streams Number of independent streams required
+##'
+##' @param seed The seed (leave `NULL` to use R's seed)
+##'
+##' @return An opaque pointer to pass through to
+##'   [viralload::log_likelihood]
+##'
+##' @export
+rng_init <- function(n_streams, seed = NULL) {
+  r_rng_init(n_streams, seed)
 }
