@@ -22,4 +22,4 @@ LinkingTo:
 Suggests:
     testthat
 Remotes:
-    mrc-ide/dust@i308-normal
+    mrc-ide/dust
