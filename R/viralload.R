@@ -1,41 +1,37 @@
-tidy_observed <- function(d) {
-  d <- lapply(dat$observed, function(x)
+log_likelihood <- function(pars, infected, observed,
+                           population, tested_population, rng,
+                           n_threads = 1L, chunk_size = NULL) {
+  if (is.null(chunk_size)) {
+    chunk_size <- ceiling((observed$size - observed$first) / n_threads)
+  }
+  if (!inherits(observed, "observed")) {
+    stop("Expected an object of class 'observed' for 'observed'")
+  }
+  if (length(infected) != observed$size) {
+    stop(sprintf("Expected observed to have length '%d'", observed$size))
+  }
+  r_likelihood(pars, infected, observed, population, tested_population, rng,
+               n_threads, chunk_size)
+}
+
+
+prepare_observed <- function(d) {
+  count <- lapply(d, function(x)
     as.numeric(x$count) %||% numeric(0))
-  len <- lengths(d)
-  list(size = length(len),
-       length = len,
-       offset = cumsum(c(0L, len[-length(d)])),
-       value = as.integer(unlist(d, FALSE, FALSE)))
-}
 
-schedule <- function(x, n_threads) {
-  if (n_threads == 1L) {
-    return(seq_along(x))
+  len <- lengths(count)
+  cutoff <- as.integer(vapply(d[len > 0], function(x) x$vl[[2]], ""))
+  if (length(unique(cutoff)) > 1) {
+    stop("Inconsistent negative cut-off")
   }
+  cutoff <- -cutoff[[1]] + 1L
 
-  n_tasks <- schedule_n(length(x), n_threads)
-
-  n <- integer(n_threads)
-  time <- numeric(n_threads)
-  tasks <- lapply(n_tasks, integer)
-
-  idx <- order(x, decreasing = TRUE)
-  for (i in seq_along(idx)) {
-    task <- idx[[i]]
-    pos <- n < n_tasks
-    j <- which(pos)[which.min(time[pos])]
-    k <- n[[j]] <- n[[j]] + 1L
-    tasks[[j]][[k]] <- task
-    time[[j]] <- time[[j]] + x[[task]]
-  }
-
-  unlist(tasks)
-}
-
-
-schedule_n <- function(n_tasks, n_threads) {
-  min <- floor(n_tasks / n_threads)
-  ret <- rep(min, n_threads)
-  ret[seq_len(n_tasks - min * n_threads)] <- min + 1L
+  ret <- list(size = length(len),
+              first = which(len > 0)[[1]],
+              cutoff = cutoff,
+              length = len,
+              offset = cumsum(c(0L, len[-length(count)])),
+              value = as.integer(unlist(count, FALSE, FALSE)))
+  class(ret) <- "observed"
   ret
 }

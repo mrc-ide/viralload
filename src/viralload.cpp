@@ -73,11 +73,15 @@ struct parameters {
 struct observed {
   observed(cpp11::list x) :
     size(cpp11::as_cpp<int>(x["size"])),
+    first(cpp11::as_cpp<int>(x["first"])),
+    cutoff(cpp11::as_cpp<int>(x["cutoff"])),
     length(INTEGER(cpp11::as_cpp<cpp11::integers>(x["length"]))),
     offset(INTEGER(cpp11::as_cpp<cpp11::integers>(x["offset"]))),
     value(INTEGER(cpp11::as_cpp<cpp11::integers>(x["value"]))) {
   }
   const int size;
+  const int first;
+  const int cutoff;
   const int * length;
   const int * offset;
   const int * value;
@@ -96,14 +100,14 @@ int vl_func(double a, double b, double tmax, double t, double log_vlmax) {
 //
 // TODO: can pass just 1 cum_infecteds
 
-double calculate_one(const int day,
-                     const double* infecteds,
-                     const double* cum_infecteds,
-                     const observed& viralload,
-                     const int population,
-                     const int tested_population,
-                     const parameters& pars,
-                     rng_state_type& state) {
+double likelihood_one(const int day,
+                      const parameters& pars,
+                      const double* infecteds,
+                      const std::vector<double>& cum_infecteds,
+                      const observed& viralload,
+                      const int population,
+                      const int tested_population,
+                      rng_state_type& state) {
   const auto proportion_ever_infected = cum_infecteds[day] / population;
   const auto ever_infected_tested =
     std::round(tested_population * proportion_ever_infected);
@@ -125,9 +129,8 @@ double calculate_one(const int day,
   const int observed_vl_size = viralload.length[day];
   const int* observed_vl = viralload.value + viralload.offset[day];
 
-  // TODO: lots of integer arithmetic here
   // Assume that the first vl_offset cases are the negatives
-  const int vl_offset = 6; // fixed for now, could be a parameter
+  const int vl_offset = viralload.cutoff;
   std::vector<int> vl_tab(observed_vl_size, 0.0);
 
   int t_sample_curr = 0;
@@ -172,17 +175,17 @@ double calculate_one(const int day,
   return ret;
 }
 
-double calculate(const int start_day,
-                 const double * infecteds,
-                 const double * cum_infecteds,
-                 const observed& viralload,
-                 const int population,
-                 const int tested_population,
-                 const parameters& pars,
-                 dust::random::prng<rng_state_type>* rng,
-                 int n_threads,
-                 int chunk_size) {
-  const int len = viralload.size - start_day + 1;
+double likelihood(const parameters& pars,
+                  const double * infecteds,
+                  const std::vector<double>& cum_infecteds,
+                  const observed& viralload,
+                  const int population,
+                  const int tested_population,
+                  dust::random::prng<rng_state_type>* rng,
+                  int n_threads,
+                  int chunk_size) {
+
+  const int len = viralload.size - viralload.first + 1;
   double ret = 0.0;
 #ifdef _OPENMP
 #pragma omp parallel for schedule(static, chunk_size) num_threads(n_threads) reduction(+:ret)
@@ -190,15 +193,26 @@ double calculate(const int start_day,
   for (int i = 0; i < len; ++i) {
     auto& state = rng->state(i);
     const int day = viralload.size - i - 1;
-    ret += calculate_one(day, infecteds, cum_infecteds,
-                         viralload, population, tested_population,
-                         pars, state);
+    ret += likelihood_one(day, pars, infecteds, cum_infecteds,
+                          viralload, population, tested_population,
+                          state);
+  }
+  return ret;
+}
+
+std::vector<double> cumsum(cpp11::doubles x) {
+  double tot = 0;
+  std::vector<double> ret(x.size());
+  for (int i = 0; i < x.size(); ++i) {
+    tot += x[i];
+    ret[i] = tot;
   }
   return ret;
 }
 
 }
 
+// TODO: this one will go into dust soon enough
 [[cpp11::register]]
 cpp11::sexp rng_init(int n_threads, cpp11::sexp seed) {
   return dust::random::r::rng_init<viralload::rng_state_type>(n_threads, seed);
@@ -206,46 +220,46 @@ cpp11::sexp rng_init(int n_threads, cpp11::sexp seed) {
 
 // Interface to calculate just one day; we'll use this for debugging mostly
 [[cpp11::register]]
-double r_calculate_one(int r_day,
-                       cpp11::doubles r_infecteds,
-                       cpp11::doubles r_cum_infecteds,
-                       cpp11::list r_viralload,
-                       int population,
-                       int tested_population,
-                       cpp11::list r_pars,
-                       cpp11::sexp r_rng) {
+double r_likelihood_one(int r_day,
+                        cpp11::list r_pars,
+                        cpp11::doubles r_infecteds,
+                        cpp11::list r_viralload,
+                        int population,
+                        int tested_population,
+                        cpp11::sexp r_rng) {
+  using rng_state_type = viralload::rng_state_type;
   const int day = r_day - 1;
-  const double * infecteds = REAL(r_infecteds);
-  const double * cum_infecteds = REAL(r_cum_infecteds);
-  const viralload::observed viralload(r_viralload);
   const viralload::parameters pars(r_pars);
-  auto rng = dust::random::r::rng_get<viralload::rng_state_type>(r_rng, 1);
-  return viralload::calculate_one(day, infecteds, cum_infecteds,
-                                  viralload, population, tested_population,
-                                  pars, rng->state(0));
+  const double * infecteds = REAL(r_infecteds);
+  const auto cum_infecteds = viralload::cumsum(r_infecteds);
+  const viralload::observed viralload(r_viralload);
+  auto rng = dust::random::r::rng_get<rng_state_type>(r_rng, viralload.size);
+
+  // Same generator as we'd use with likelihood
+  auto& state = rng->state(viralload.size - r_day);
+
+  return viralload::likelihood_one(day, pars, infecteds, cum_infecteds,
+                                   viralload, population, tested_population,
+                                   state);
 }
 
 [[cpp11::register]]
-double r_calculate(int r_start_day,
-                   cpp11::doubles r_infecteds,
-                   cpp11::doubles r_cum_infecteds,
-                   cpp11::list r_viralload,
-                   int population,
-                   int tested_population,
-                   cpp11::list r_pars,
-                   cpp11::sexp r_rng,
-                   int n_threads,
-                   int chunk_size) {
-  // assert observed.size is same as (cum_)infecteds size
-  // assert start_day within range
-  const int start_day = r_start_day;
-  const double * infecteds = REAL(r_infecteds);
-  const double * cum_infecteds = REAL(r_cum_infecteds);
-  const viralload::observed viralload(r_viralload);
+double r_likelihood(cpp11::list r_pars,
+                    cpp11::doubles r_infecteds,
+                    cpp11::list r_viralload,
+                    int population,
+                    int tested_population,
+                    cpp11::sexp r_rng,
+                    int n_threads,
+                    int chunk_size) {
+  using rng_state_type = viralload::rng_state_type;
   const viralload::parameters pars(r_pars);
-  auto rng = dust::random::r::rng_get<viralload::rng_state_type>(r_rng, 1);
+  const double * infecteds = REAL(r_infecteds);
+  const auto cum_infecteds = viralload::cumsum(r_infecteds);
+  const viralload::observed viralload(r_viralload);
+  auto rng = dust::random::r::rng_get<rng_state_type>(r_rng, viralload.size);
 
-  return viralload::calculate(start_day, infecteds, cum_infecteds,
-                              viralload, population, tested_population,
-                              pars, rng, n_threads, chunk_size);
+  return viralload::likelihood(pars, infecteds, cum_infecteds,
+                               viralload, population, tested_population,
+                               rng, n_threads, chunk_size);
 }
