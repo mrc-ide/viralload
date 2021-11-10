@@ -51,7 +51,7 @@ log_likelihood <- function(pars, infected, observed,
 ##'   and `count`
 ##'
 ##' @return An object of class `observed` to pass through to
-##'   [viralload::log_liklihood]. **DO NOT ALTER THIS OBJECT**
+##'   [viralload::log_likelihood]. **DO NOT ALTER THIS OBJECT**
 ##'
 ##' @export
 prepare_observed <- function(observed) {

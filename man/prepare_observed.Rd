@@ -12,7 +12,7 @@ and \code{count}}
 }
 \value{
 An object of class \code{observed} to pass through to
-\link{log_liklihood}. \strong{DO NOT ALTER THIS OBJECT}
+\link{log_likelihood}. \strong{DO NOT ALTER THIS OBJECT}
 }
 \description{
 Prepare observed data
