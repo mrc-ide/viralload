@@ -10,14 +10,12 @@
 #include <dust/random/random.hpp>
 #include <dust/r/random.hpp>
 
-// This will move into dust, eventually probably needs to play nice
-// with the R-facing RNG as it is literally the same thing.
+// NOTE: will move into dust (#329)
 namespace dust {
 namespace random {
 namespace r {
 template <typename rng_state_type>
 SEXP rng_init(int n, cpp11::sexp r_seed) {
-  // TODO: we need to pop this into dust/random/r.hpp or similar
   auto seed = dust::r::as_rng_seed<rng_state_type>(r_seed);
   auto *rng = new prng<rng_state_type>(n, seed);
   auto ret = cpp11::external_pointer<prng<rng_state_type>>(rng);
@@ -95,11 +93,8 @@ int vl_func(double a, double b, double tmax, double t, double log_vlmax) {
   return std::floor(value);
 }
 
-// TODO: if we reuse these vectors (infecteds, cum_infecteds) we can
-// compute some of these things ahead of time.
-//
-// TODO: can pass just 1 cum_infecteds
-
+// Could pass just 1 cum_infecteds, but I don't think there's any
+// strong reason to do so.
 double likelihood_one(const int day,
                       const parameters& pars,
                       const double* infecteds,
@@ -212,7 +207,7 @@ std::vector<double> cumsum(cpp11::doubles x) {
 
 }
 
-// TODO: this one will go into dust soon enough
+// TODO: this one will go into dust soon enough (dust #329)
 [[cpp11::register]]
 cpp11::sexp r_rng_init(int n_streams, cpp11::sexp seed) {
   return dust::random::r::rng_init<viralload::rng_state_type>(n_streams, seed);
