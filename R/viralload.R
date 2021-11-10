@@ -78,9 +78,6 @@ prepare_observed <- function(observed) {
       vl[2:length(vl)],
       as.character(seq(cutoff, length.out = length(vl) - 1L))))
   }
-  if (length(unique(cutoff)) > 1) {
-    stop("Inconsistent negative cut-off")
-  }
 
   cutoff <- -cutoff + 1L
   ret <- list(size = length(len),
