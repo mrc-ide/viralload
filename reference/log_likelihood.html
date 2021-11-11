@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Function reference • viralload</title>
+<title>Compute likelihood — log_likelihood • viralload</title>
 
 
 <!-- jquery -->
@@ -39,7 +39,8 @@
 
 
 
-<meta property="og:title" content="Function reference" />
+<meta property="og:title" content="Compute likelihood — log_likelihood" />
+<meta property="og:description" content="Compute likelihood" />
 
 
 
@@ -58,7 +59,7 @@
   </head>
 
   <body data-spy="scroll" data-target="#toc">
-    <div class="container template-reference-index">
+    <div class="container template-reference-topic">
       <header>
       <div class="navbar navbar-default navbar-fixed-top" role="navigation">
   <div class="container">
@@ -105,54 +106,77 @@
       </header>
 
 <div class="row">
-  <div class="contents col-md-9">
+  <div class="col-md-9 contents">
     <div class="page-header">
-      <h1>Reference</h1>
+    <h1>Compute likelihood</h1>
+    <small class="dont-index">Source: <a href='https://github.com/mrc-ide/viralload/blob/master/R/viralload.R'><code>R/viralload.R</code></a></small>
+    <div class="hidden name"><code>log_likelihood.Rd</code></div>
     </div>
 
-    <table class="ref-index">
+    <div class="ref-description">
+    <p>Compute likelihood</p>
+    </div>
 
-    <colgroup>
-      
-      <col class="alias" />
-      <col class="title" />
-    </colgroup>
+    <pre class="usage"><span class='fu'>log_likelihood</span><span class='op'>(</span>
+  <span class='va'>pars</span>,
+  <span class='va'>infected</span>,
+  <span class='va'>observed</span>,
+  <span class='va'>population</span>,
+  <span class='va'>tested_population</span>,
+  <span class='va'>rng</span>,
+  n_threads <span class='op'>=</span> <span class='fl'>1L</span>,
+  chunk_size <span class='op'>=</span> <span class='cn'>NULL</span>
+<span class='op'>)</span></pre>
 
-    <tbody>
-      <tr>
-        <th colspan="2">
-          <h2 id="section-all-functions" class="hasAnchor"><a href="#section-all-functions" class="anchor"></a>All functions</h2>
-          <p class="section-desc"></p>
-        </th>
-      </tr>
-      
-      
-    </tbody><tbody>
-      
-      
-      <tr>
-        
-        <td>
-          <p><code><a href="log_likelihood.html">log_likelihood()</a></code> </p>
-        </td>
-        <td><p>Compute likelihood</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="prepare_observed.html">prepare_observed()</a></code> </p>
-        </td>
-        <td><p>Prepare observed data</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="rng_init.html">rng_init()</a></code> </p>
-        </td>
-        <td><p>Create RNG object</p></td>
-      </tr>
-    </tbody>
+    <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
+    <table class="ref-arguments">
+    <colgroup><col class="name" /><col class="desc" /></colgroup>
+    <tr>
+      <th>pars</th>
+      <td><p>Named list of parameters. Must have elements <code>a_bar</code>,
+<code>a_sigma</code>, <code>b_bar</code>, <code>b_sigma</code>, <code>tmax_bar</code>, <code>tmax_sigma</code>,
+<code>log_vlmax_bar</code>, <code>log_vlmax_sigma</code></p></td>
+    </tr>
+    <tr>
+      <th>infected</th>
+      <td><p>Vector of number of simulated infections. Must
+have length <code>observed$size</code> (this is checked)</p></td>
+    </tr>
+    <tr>
+      <th>observed</th>
+      <td><p>An <code>observed</code> object, created by <code>prepare_observed</code></p></td>
+    </tr>
+    <tr>
+      <th>population</th>
+      <td><p>Integer, size of population</p></td>
+    </tr>
+    <tr>
+      <th>tested_population</th>
+      <td><p>Integer, size of tested population</p></td>
+    </tr>
+    <tr>
+      <th>rng</th>
+      <td><p>A random number object, created by <code>rng_init</code> (this
+will swap out soon for a dust function)</p></td>
+    </tr>
+    <tr>
+      <th>n_threads</th>
+      <td><p>Number of threads to run on, if openmp available.
+See <a href='https://rdrr.io/pkg/dust/man/dust_openmp_threads.html'>dust::dust_openmp_threads</a> for guidance</p></td>
+    </tr>
+    <tr>
+      <th>chunk_size</th>
+      <td><p>The size of the chunks to run the parallel jobs
+in.  The optimal value here will vary depending on your problem
+and number of threads. '5' seems like a good guess.</p></td>
+    </tr>
     </table>
-  </div>
 
+    <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
+
+    <p>A single numeric log-likelihood value</p>
+
+  </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
     <nav id="toc" data-toggle="toc" class="sticky-top">
       <h2 data-toc-skip>Contents</h2>
