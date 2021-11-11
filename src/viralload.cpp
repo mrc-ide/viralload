@@ -88,7 +88,7 @@ struct observed {
 // TODO: a nicer name here would be good
 int vl_func(double a, double b, double tmax, double t, double log_vlmax) {
   const auto tau = t - tmax;
-  const auto value = std::log10(pow(10, log_vlmax) * (a + b) /
+  const auto value = std::log10(std::pow(10, log_vlmax) * (a + b) /
                                 (b * std::exp(-a * tau) + a * exp(b * tau)));
   return std::floor(value);
 }
