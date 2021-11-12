@@ -15,8 +15,8 @@
 ##'
 ##' @param tested_population Integer, size of tested population
 ##'
-##' @param rng A random number object, created by `rng_init` (this
-##'   will swap out soon for a dust function)
+##' @param rng A random number pointer, created by
+##'   [dust::dust_rng_pointer]
 ##'
 ##' @param n_threads Number of threads to run on, if openmp available.
 ##'   See [dust::dust_openmp_threads] for guidance
@@ -88,20 +88,4 @@ prepare_observed <- function(observed) {
               value = as.integer(unlist(count, FALSE, FALSE)))
   class(ret) <- "observed"
   ret
-}
-
-##' Create a streaming RNG object
-##'
-##' @title Create RNG object
-##'
-##' @param n_streams Number of independent streams required
-##'
-##' @param seed The seed (leave `NULL` to use R's seed)
-##'
-##' @return An opaque pointer to pass through to
-##'   [viralload::log_likelihood]
-##'
-##' @export
-rng_init <- function(n_streams, seed = NULL) {
-  r_rng_init(n_streams, seed)
 }

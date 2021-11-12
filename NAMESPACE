@@ -2,5 +2,4 @@
 
 export(log_likelihood)
 export(prepare_observed)
-export(rng_init)
 useDynLib(viralload, .registration = TRUE)

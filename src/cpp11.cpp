@@ -6,13 +6,6 @@
 #include <R_ext/Visibility.h>
 
 // viralload.cpp
-cpp11::sexp r_rng_init(int n_streams, cpp11::sexp seed);
-extern "C" SEXP _viralload_r_rng_init(SEXP n_streams, SEXP seed) {
-  BEGIN_CPP11
-    return cpp11::as_sexp(r_rng_init(cpp11::as_cpp<cpp11::decay_t<int>>(n_streams), cpp11::as_cpp<cpp11::decay_t<cpp11::sexp>>(seed)));
-  END_CPP11
-}
-// viralload.cpp
 double r_likelihood_one(int r_day, cpp11::list r_pars, cpp11::doubles r_infecteds, cpp11::list r_viralload, int population, int tested_population, cpp11::sexp r_rng);
 extern "C" SEXP _viralload_r_likelihood_one(SEXP r_day, SEXP r_pars, SEXP r_infecteds, SEXP r_viralload, SEXP population, SEXP tested_population, SEXP r_rng) {
   BEGIN_CPP11
@@ -31,7 +24,6 @@ extern "C" {
 static const R_CallMethodDef CallEntries[] = {
     {"_viralload_r_likelihood",     (DL_FUNC) &_viralload_r_likelihood,     8},
     {"_viralload_r_likelihood_one", (DL_FUNC) &_viralload_r_likelihood_one, 7},
-    {"_viralload_r_rng_init",       (DL_FUNC) &_viralload_r_rng_init,       2},
     {NULL, NULL, 0}
 };
 }

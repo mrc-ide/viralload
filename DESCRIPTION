@@ -1,6 +1,6 @@
 Package: viralload
 Title: Time Varying Sampling from Time Varying Functions
-Version: 0.1.0
+Version: 0.1.1
 Authors@R: c(person("Will", "Green", role = c("aut", "cre"),
                     email = "rich.fitzjohn@gmail.com"),
              person("Rich", "FitzJohn", role = c("aut"),
@@ -18,7 +18,7 @@ BugReports: https://github.com/mrc-ide/viralload/issues
 SystemRequirements: C++11
 LinkingTo:
     cpp11,
-    dust (>= 0.11.6)
+    dust (>= 0.11.8)
 Suggests:
     testthat
 Remotes:
