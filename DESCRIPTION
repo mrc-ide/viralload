@@ -16,11 +16,12 @@ RoxygenNote: 7.1.2
 URL: https://github.com/mrc-ide/viralload
 BugReports: https://github.com/mrc-ide/viralload/issues
 SystemRequirements: C++11
+Depends: R (>= 4.0.0)
 LinkingTo:
     cpp11,
-    dust (>= 0.11.8)
+    dust (>= 0.11.10)
 Imports:
-    dust
+    dust (>= 0.11.10)
 Suggests:
     testthat
 Remotes:

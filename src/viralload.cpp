@@ -12,7 +12,7 @@
 
 namespace viralload {
 
-typedef dust::random::xoroshiro128plus_state rng_state_type;
+typedef dust::random::xoroshiro128plus rng_state_type;
 
 double double_from_list(cpp11::list x, const char * name) {
   return cpp11::as_cpp<double>(x[name]);
