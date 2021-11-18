@@ -8,7 +8,7 @@
 test_that("calculation agrees with the R version for one day", {
   dat <- reference()
   observed <- prepare_observed(dat$observed)
-  rng <- dust::dust_rng_pointer$new(42, observed$size, "xoroshiro128plus")
+  rng <- test_rng_pointer()
   day <- 30L
   y <- replicate(
     30,
@@ -30,8 +30,8 @@ test_that("calculation is sum over days", {
   dat <- reference()
   observed <- prepare_observed(dat$observed)
 
-  rng1 <- dust::dust_rng_pointer$new(42, observed$size, "xoroshiro128plus")
-  rng2 <- dust::dust_rng_pointer$new(42, observed$size, "xoroshiro128plus")
+  rng1 <- test_rng_pointer()
+  rng2 <- test_rng_pointer()
 
   ll1 <- log_likelihood(dat$pars, dat$infected, observed,
                         dat$population, dat$tested_population,
@@ -46,7 +46,7 @@ test_that("calculation is sum over days", {
 test_that("Check that infected is the correct size", {
   dat <- reference()
   observed <- prepare_observed(dat$observed)
-  rng <- dust::dust_rng_pointer$new(42, observed$size, "xoroshiro128plus")
+  rng <- test_rng_pointer()
   expect_error(
     log_likelihood(dat$pars, dat$infected[-1], observed,
                    dat$population, dat$tested_population,
@@ -58,7 +58,7 @@ test_that("Check that infected is the correct size", {
 test_that("Check that we are given 'observed' object", {
   dat <- reference()
   observed <- prepare_observed(dat$observed)
-  rng <- dust::dust_rng_pointer$new(42, observed$size, "xoroshiro128plus")
+  rng <- test_rng_pointer()
   expect_error(
     log_likelihood(dat$pars, dat$infected, NULL,
                    dat$population, dat$tested_population,
