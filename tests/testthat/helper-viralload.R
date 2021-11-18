@@ -86,6 +86,6 @@ reference <- function() {
 }
 
 
-test_rng_pointer <- function() {
+test_rng_pointer <- function(observed) {
   dust::dust_rng_pointer$new(42, observed$size, 1, "xoroshiro128plus")
 }
