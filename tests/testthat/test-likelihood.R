@@ -8,7 +8,7 @@
 test_that("calculation agrees with the R version for one day", {
   dat <- reference()
   observed <- prepare_observed(dat$observed)
-  rng <- rng_init(observed$size, 42)
+  rng <- test_rng_pointer(observed)
   day <- 30L
   y <- replicate(
     30,
@@ -30,8 +30,8 @@ test_that("calculation is sum over days", {
   dat <- reference()
   observed <- prepare_observed(dat$observed)
 
-  rng1 <- rng_init(observed$size, 42)
-  rng2 <- rng_init(observed$size, 42)
+  rng1 <- test_rng_pointer(observed)
+  rng2 <- test_rng_pointer(observed)
 
   ll1 <- log_likelihood(dat$pars, dat$infected, observed,
                         dat$population, dat$tested_population,
@@ -43,27 +43,14 @@ test_that("calculation is sum over days", {
 })
 
 
-test_that("ensure rng has enough streams", {
-  dat <- reference()
-  observed <- prepare_observed(dat$observed)
-
-  rng <- rng_init(observed$size - 1, 42)
-  day <- 30L
-  expect_error(
-    r_likelihood_one(day, dat$pars, dat$infected, observed,
-                     dat$population, dat$tested_population,
-                     rng),
-    "Requested a rng with 100 streams but only have 99")
-})
-
-
 test_that("Check that infected is the correct size", {
   dat <- reference()
   observed <- prepare_observed(dat$observed)
+  rng <- test_rng_pointer(observed)
   expect_error(
     log_likelihood(dat$pars, dat$infected[-1], observed,
                    dat$population, dat$tested_population,
-                   rng_init(observed$size, 1)),
+                   rng),
     "Expected observed to have length '100'")
 })
 
@@ -71,10 +58,11 @@ test_that("Check that infected is the correct size", {
 test_that("Check that we are given 'observed' object", {
   dat <- reference()
   observed <- prepare_observed(dat$observed)
+  rng <- test_rng_pointer(observed)
   expect_error(
     log_likelihood(dat$pars, dat$infected, NULL,
                    dat$population, dat$tested_population,
-                   rng1_init(observed$size, 1)),
+                   rng),
     "Expected an object of class 'observed' for 'observed'")
 })
 

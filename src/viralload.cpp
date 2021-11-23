@@ -10,38 +10,9 @@
 #include <dust/random/random.hpp>
 #include <dust/r/random.hpp>
 
-// NOTE: will move into dust (#329)
-namespace dust {
-namespace random {
-namespace r {
-template <typename rng_state_type>
-SEXP rng_init(int n, cpp11::sexp r_seed) {
-  auto seed = dust::r::as_rng_seed<rng_state_type>(r_seed);
-  auto *rng = new prng<rng_state_type>(n, seed);
-  auto ret = cpp11::external_pointer<prng<rng_state_type>>(rng);
-  return ret;
-}
-
-template <typename rng_state_type>
-prng<rng_state_type>* rng_get(cpp11::sexp ptr, int n) {
-  auto *rng =
-    cpp11::as_cpp<cpp11::external_pointer<prng<rng_state_type>>>(ptr).get();
-  if (n > 0) {
-    if (static_cast<int>(rng->size()) < n) {
-      cpp11::stop("Requested a rng with %d streams but only have %d",
-                  n, rng->size());
-    }
-  }
-  return rng;
-}
-
-}
-}
-}
-
 namespace viralload {
 
-typedef dust::random::xoroshiro128plus_state rng_state_type;
+typedef dust::random::xoroshiro128plus rng_state_type;
 
 double double_from_list(cpp11::list x, const char * name) {
   return cpp11::as_cpp<double>(x[name]);
@@ -207,12 +178,6 @@ std::vector<double> cumsum(cpp11::doubles x) {
 
 }
 
-// TODO: this one will go into dust soon enough (dust #329)
-[[cpp11::register]]
-cpp11::sexp r_rng_init(int n_streams, cpp11::sexp seed) {
-  return dust::random::r::rng_init<viralload::rng_state_type>(n_streams, seed);
-}
-
 // Interface to calculate just one day; we'll use this for debugging mostly
 [[cpp11::register]]
 double r_likelihood_one(int r_day,
@@ -228,7 +193,8 @@ double r_likelihood_one(int r_day,
   const double * infecteds = REAL(r_infecteds);
   const auto cum_infecteds = viralload::cumsum(r_infecteds);
   const viralload::observed viralload(r_viralload);
-  auto rng = dust::random::r::rng_get<rng_state_type>(r_rng, viralload.size);
+  auto rng =
+    dust::random::r::rng_pointer_get<rng_state_type>(r_rng, viralload.size);
 
   // Same generator as we'd use with likelihood
   auto& state = rng->state(viralload.size - r_day);
@@ -252,7 +218,8 @@ double r_likelihood(cpp11::list r_pars,
   const double * infecteds = REAL(r_infecteds);
   const auto cum_infecteds = viralload::cumsum(r_infecteds);
   const viralload::observed viralload(r_viralload);
-  auto rng = dust::random::r::rng_get<rng_state_type>(r_rng, viralload.size);
+  auto rng =
+    dust::random::r::rng_pointer_get<rng_state_type>(r_rng, viralload.size);
 
   return viralload::likelihood(pars, infecteds, cum_infecteds,
                                viralload, population, tested_population,

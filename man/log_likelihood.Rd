@@ -29,8 +29,8 @@ have length \code{observed$size} (this is checked)}
 
 \item{tested_population}{Integer, size of tested population}
 
-\item{rng}{A random number object, created by \code{rng_init} (this
-will swap out soon for a dust function)}
+\item{rng}{A random number pointer, created by
+\link[dust:dust_rng_pointer]{dust::dust_rng_pointer}}
 
 \item{n_threads}{Number of threads to run on, if openmp available.
 See \link[dust:dust_openmp_threads]{dust::dust_openmp_threads} for guidance}
