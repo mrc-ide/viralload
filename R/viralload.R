@@ -39,6 +39,16 @@ log_likelihood <- function(pars, infected, observed,
   if (length(infected) != observed$size) {
     stop(sprintf("Expected observed to have length '%d'", observed$size))
   }
+  if (length(tested_population) != observed$size) {
+    if (length(tested_population) == 1L) {
+      tested_population <- rep(tested_population, observed$size)
+    } else {
+      stop("Expected 'tested_population' to be a scalar or vector of length ",
+           observed$size)
+    }
+  }
+  ## Ensure integer storage
+  tested_population <- as.integer(tested_population)
   r_likelihood(pars, infected, observed, population, tested_population, rng,
                n_threads, chunk_size)
 }

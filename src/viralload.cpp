@@ -146,7 +146,7 @@ double likelihood(const parameters& pars,
                   const std::vector<double>& cum_infecteds,
                   const observed& viralload,
                   const int population,
-                  const int tested_population,
+                  const int * tested_population,
                   dust::random::prng<rng_state_type>* rng,
                   int n_threads,
                   int chunk_size) {
@@ -160,7 +160,7 @@ double likelihood(const parameters& pars,
     auto& state = rng->state(i);
     const int day = viralload.size - i - 1;
     ret += likelihood_one(day, pars, infecteds, cum_infecteds,
-                          viralload, population, tested_population,
+                          viralload, population, tested_population[day],
                           state);
   }
   return ret;
@@ -209,7 +209,7 @@ double r_likelihood(cpp11::list r_pars,
                     cpp11::doubles r_infecteds,
                     cpp11::list r_viralload,
                     int population,
-                    int tested_population,
+                    cpp11::integers r_tested_population,
                     cpp11::sexp r_rng,
                     int n_threads,
                     int chunk_size) {
@@ -218,6 +218,7 @@ double r_likelihood(cpp11::list r_pars,
   const double * infecteds = REAL(r_infecteds);
   const auto cum_infecteds = viralload::cumsum(r_infecteds);
   const viralload::observed viralload(r_viralload);
+  const int * tested_population = INTEGER(r_tested_population);
   auto rng =
     dust::random::r::rng_pointer_get<rng_state_type>(r_rng, viralload.size);
 

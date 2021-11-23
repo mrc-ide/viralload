@@ -4,6 +4,6 @@ r_likelihood_one <- function(r_day, r_pars, r_infecteds, r_viralload, population
   .Call(`_viralload_r_likelihood_one`, r_day, r_pars, r_infecteds, r_viralload, population, tested_population, r_rng)
 }
 
-r_likelihood <- function(r_pars, r_infecteds, r_viralload, population, tested_population, r_rng, n_threads, chunk_size) {
-  .Call(`_viralload_r_likelihood`, r_pars, r_infecteds, r_viralload, population, tested_population, r_rng, n_threads, chunk_size)
+r_likelihood <- function(r_pars, r_infecteds, r_viralload, population, r_tested_population, r_rng, n_threads, chunk_size) {
+  .Call(`_viralload_r_likelihood`, r_pars, r_infecteds, r_viralload, population, r_tested_population, r_rng, n_threads, chunk_size)
 }
