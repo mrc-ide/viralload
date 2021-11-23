@@ -13,10 +13,10 @@ extern "C" SEXP _viralload_r_likelihood_one(SEXP r_day, SEXP r_pars, SEXP r_infe
   END_CPP11
 }
 // viralload.cpp
-double r_likelihood(cpp11::list r_pars, cpp11::doubles r_infecteds, cpp11::list r_viralload, int population, int tested_population, cpp11::sexp r_rng, int n_threads, int chunk_size);
-extern "C" SEXP _viralload_r_likelihood(SEXP r_pars, SEXP r_infecteds, SEXP r_viralload, SEXP population, SEXP tested_population, SEXP r_rng, SEXP n_threads, SEXP chunk_size) {
+double r_likelihood(cpp11::list r_pars, cpp11::doubles r_infecteds, cpp11::list r_viralload, int population, cpp11::integers r_tested_population, cpp11::sexp r_rng, int n_threads, int chunk_size);
+extern "C" SEXP _viralload_r_likelihood(SEXP r_pars, SEXP r_infecteds, SEXP r_viralload, SEXP population, SEXP r_tested_population, SEXP r_rng, SEXP n_threads, SEXP chunk_size) {
   BEGIN_CPP11
-    return cpp11::as_sexp(r_likelihood(cpp11::as_cpp<cpp11::decay_t<cpp11::list>>(r_pars), cpp11::as_cpp<cpp11::decay_t<cpp11::doubles>>(r_infecteds), cpp11::as_cpp<cpp11::decay_t<cpp11::list>>(r_viralload), cpp11::as_cpp<cpp11::decay_t<int>>(population), cpp11::as_cpp<cpp11::decay_t<int>>(tested_population), cpp11::as_cpp<cpp11::decay_t<cpp11::sexp>>(r_rng), cpp11::as_cpp<cpp11::decay_t<int>>(n_threads), cpp11::as_cpp<cpp11::decay_t<int>>(chunk_size)));
+    return cpp11::as_sexp(r_likelihood(cpp11::as_cpp<cpp11::decay_t<cpp11::list>>(r_pars), cpp11::as_cpp<cpp11::decay_t<cpp11::doubles>>(r_infecteds), cpp11::as_cpp<cpp11::decay_t<cpp11::list>>(r_viralload), cpp11::as_cpp<cpp11::decay_t<int>>(population), cpp11::as_cpp<cpp11::decay_t<cpp11::integers>>(r_tested_population), cpp11::as_cpp<cpp11::decay_t<cpp11::sexp>>(r_rng), cpp11::as_cpp<cpp11::decay_t<int>>(n_threads), cpp11::as_cpp<cpp11::decay_t<int>>(chunk_size)));
   END_CPP11
 }
 

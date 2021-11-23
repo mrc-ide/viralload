@@ -43,6 +43,27 @@ test_that("calculation is sum over days", {
 })
 
 
+test_that("calculation is sum over days when testing varies", {
+  dat <- reference()
+  observed <- prepare_observed(dat$observed)
+
+  rng1 <- test_rng_pointer(observed)
+  rng2 <- test_rng_pointer(observed)
+
+  tested_population <- rpois(observed$size, 1e6)
+
+  ll1 <- log_likelihood(dat$pars, dat$infected, observed,
+                        dat$population, tested_population,
+                        rng1)
+  ll2 <- vapply(10:100, function(day)
+    r_likelihood_one(day, dat$pars, dat$infected, observed,
+                     dat$population, tested_population[day], rng2),
+    numeric(1))
+
+  expect_equal(ll1, sum(ll2))
+})
+
+
 test_that("Check that infected is the correct size", {
   dat <- reference()
   observed <- prepare_observed(dat$observed)
@@ -78,4 +99,19 @@ test_that("Check that cuttoff is consistent", {
   expect_error(
     prepare_observed(obs),
     "Expected 'negative' for first value of vl in element 13")
+})
+
+
+test_that("tested_population must be of suitable length", {
+  dat <- reference()
+  observed <- prepare_observed(dat$observed)
+
+  rng <- test_rng_pointer(observed)
+  tested_population <- rep(1e6, observed$size - 1)
+
+  expect_error(
+    log_likelihood(dat$pars, dat$infected, observed,
+                   dat$population, tested_population,
+                   rng),
+    "Expected 'tested_population' to be a scalar or vector of length 100")
 })
