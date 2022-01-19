@@ -41,16 +41,18 @@ struct parameters {
 
 struct observed {
   observed(cpp11::list x) :
-    size(cpp11::as_cpp<int>(x["size"])),
-    first(cpp11::as_cpp<int>(x["first"])),
+    size_full(cpp11::as_cpp<int>(x["size_full"])),
+    size_data(cpp11::as_cpp<int>(x["size_data"])),
     cutoff(cpp11::as_cpp<int>(x["cutoff"])),
+    day(INTEGER(cpp11::as_cpp<cpp11::integers>(x["day"]))),
     length(INTEGER(cpp11::as_cpp<cpp11::integers>(x["length"]))),
     offset(INTEGER(cpp11::as_cpp<cpp11::integers>(x["offset"]))),
     value(INTEGER(cpp11::as_cpp<cpp11::integers>(x["value"]))) {
   }
-  const int size;
-  const int first;
+  const int size_full;
+  const int size_data;
   const int cutoff;
+  const int * day;
   const int * length;
   const int * offset;
   const int * value;
@@ -151,14 +153,14 @@ double likelihood(const parameters& pars,
                   int n_threads,
                   int chunk_size) {
 
-  const int len = viralload.size - viralload.first + 1;
+  const int len = viralload.size_data;
   double ret = 0.0;
 #ifdef _OPENMP
 #pragma omp parallel for schedule(static, chunk_size) num_threads(n_threads) reduction(+:ret)
 #endif
   for (int i = 0; i < len; ++i) {
-    auto& state = rng->state(i);
-    const int day = viralload.size - i - 1;
+    const int day = viralload.day[i] - 1;
+    auto& state = rng->state(day);
     ret += likelihood_one(day, pars, infecteds, cum_infecteds,
                           viralload, population, tested_population[day],
                           state);
@@ -194,10 +196,10 @@ double r_likelihood_one(int r_day,
   const auto cum_infecteds = viralload::cumsum(r_infecteds);
   const viralload::observed viralload(r_viralload);
   auto rng =
-    dust::random::r::rng_pointer_get<rng_state_type>(r_rng, viralload.size);
+    dust::random::r::rng_pointer_get<rng_state_type>(r_rng, viralload.size_full);
 
   // Same generator as we'd use with likelihood
-  auto& state = rng->state(viralload.size - r_day);
+  auto& state = rng->state(day);
 
   return viralload::likelihood_one(day, pars, infecteds, cum_infecteds,
                                    viralload, population, tested_population,
@@ -220,7 +222,7 @@ double r_likelihood(cpp11::list r_pars,
   const viralload::observed viralload(r_viralload);
   const int * tested_population = INTEGER(r_tested_population);
   auto rng =
-    dust::random::r::rng_pointer_get<rng_state_type>(r_rng, viralload.size);
+    dust::random::r::rng_pointer_get<rng_state_type>(r_rng, viralload.size_full);
 
   return viralload::likelihood(pars, infecteds, cum_infecteds,
                                viralload, population, tested_population,

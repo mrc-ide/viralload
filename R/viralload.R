@@ -7,7 +7,7 @@
 ##'   `log_vlmax_bar`, `log_vlmax_sigma`
 ##'
 ##' @param infected Vector of number of simulated infections. Must
-##'   have length `observed$size` (this is checked)
+##'   have length `observed$size_full` (this is checked)
 ##'
 ##' @param observed An `observed` object, created by `prepare_observed`
 ##'
@@ -31,20 +31,20 @@ log_likelihood <- function(pars, infected, observed,
                            population, tested_population, rng,
                            n_threads = 1L, chunk_size = NULL) {
   if (is.null(chunk_size)) {
-    chunk_size <- ceiling((observed$size - observed$first) / n_threads)
+    chunk_size <- ceiling(length(observed$day) / n_threads)
   }
   if (!inherits(observed, "observed")) {
     stop("Expected an object of class 'observed' for 'observed'")
   }
-  if (length(infected) != observed$size) {
-    stop(sprintf("Expected observed to have length '%d'", observed$size))
+  if (length(infected) != observed$size_full) {
+    stop(sprintf("Expected observed to have length '%d'", observed$size_full))
   }
-  if (length(tested_population) != observed$size) {
+  if (length(tested_population) != observed$size_full) {
     if (length(tested_population) == 1L) {
-      tested_population <- rep(tested_population, observed$size)
+      tested_population <- rep(tested_population, observed$size_full)
     } else {
       stop("Expected 'tested_population' to be a scalar or vector of length ",
-           observed$size)
+           observed$size_full)
     }
   }
   ## Ensure integer storage
@@ -90,11 +90,14 @@ prepare_observed <- function(observed) {
   }
 
   cutoff <- -cutoff + 1L
-  ret <- list(size = length(len),
-              first = which(len > 0)[[1]],
+  day <- which(len > 0)
+
+  ret <- list(day = day,
+              size_full = length(len), # all days of infecteds
+              size_data = length(day), # all days we have data for
               cutoff = cutoff,
               length = len,
-              offset = cumsum(c(0L, len[-length(count)])),
+              offset = cumsum(c(0L, len[-length(len)])),
               value = as.integer(unlist(count, FALSE, FALSE)))
   class(ret) <- "observed"
   ret

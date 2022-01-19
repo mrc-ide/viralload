@@ -36,7 +36,7 @@ test_that("calculation is sum over days", {
   ll1 <- log_likelihood(dat$pars, dat$infected, observed,
                         dat$population, dat$tested_population,
                         rng1)
-  ll2 <- vapply(10:100, r_likelihood_one, numeric(1),
+  ll2 <- vapply(observed$day, r_likelihood_one, numeric(1),
                 dat$pars, dat$infected, observed,
                 dat$population, dat$tested_population, rng2)
   expect_equal(ll1, sum(ll2))
@@ -50,7 +50,7 @@ test_that("calculation is sum over days when testing varies", {
   rng1 <- test_rng_pointer(observed)
   rng2 <- test_rng_pointer(observed)
 
-  tested_population <- rpois(observed$size, 1e6)
+  tested_population <- rpois(observed$size_full, 1e6)
 
   ll1 <- log_likelihood(dat$pars, dat$infected, observed,
                         dat$population, tested_population,
@@ -107,11 +107,36 @@ test_that("tested_population must be of suitable length", {
   observed <- prepare_observed(dat$observed)
 
   rng <- test_rng_pointer(observed)
-  tested_population <- rep(1e6, observed$size - 1)
+  tested_population <- rep(1e6, observed$size_full - 1)
 
   expect_error(
     log_likelihood(dat$pars, dat$infected, observed,
                    dat$population, tested_population,
                    rng),
     "Expected 'tested_population' to be a scalar or vector of length 100")
+})
+
+
+test_that("calculation is sum over days", {
+  dat <- reference()
+
+  i <- sample.int(100, 10)
+  observed_empty <- dat$observed
+  observed_empty[i] <- list(NULL)
+  observed_empty <- prepare_observed(observed_empty)
+
+  observed_full <- prepare_observed(dat$observed)
+
+  ## TODO: what is the expectation here?
+  rng1 <- test_rng_pointer(observed_empty)
+  ll1 <- log_likelihood(dat$pars, dat$infected, observed_empty,
+                       dat$population, dat$tested_population,
+                       rng1)
+
+  rng2 <- test_rng_pointer(observed_full)
+  ll2 <- vapply(observed_empty$day, r_likelihood_one, numeric(1),
+                dat$pars, dat$infected, observed_full,
+                dat$population, dat$tested_population, rng2)
+
+  expect_equal(ll1, sum(ll2))
 })
