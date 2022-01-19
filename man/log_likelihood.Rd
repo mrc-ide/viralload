@@ -21,7 +21,7 @@ log_likelihood(
 \code{log_vlmax_bar}, \code{log_vlmax_sigma}}
 
 \item{infected}{Vector of number of simulated infections. Must
-have length \code{observed$size} (this is checked)}
+have length \code{observed$size_full} (this is checked)}
 
 \item{observed}{An \code{observed} object, created by \code{prepare_observed}}
 
