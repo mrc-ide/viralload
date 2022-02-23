@@ -70,6 +70,7 @@ int vl_func(double a, double b, double tmax, double t, double log_vlmax) {
 // strong reason to do so.
 double likelihood_one(const int day,
                       const parameters& pars,
+                      const int n,
                       const double* infecteds,
                       const std::vector<double>& cum_infecteds,
                       const observed& viralload,
@@ -83,8 +84,10 @@ double likelihood_one(const int day,
 
   // NOTE: can be skipped
   std::vector<double> prob(day + 1);
+  //std::vector<double> prob(n + 1);
   for (int i = 0; i <= day; ++i) {
-    prob[i] = infecteds[day - i] / cum_infecteds[day];
+    if(i >= n) prob[i] = 0;
+    else prob[i] = infecteds[day - i] / cum_infecteds[day];
   }
 
   // Because this will run from openmp, we will crash if this fails
@@ -144,6 +147,7 @@ double likelihood_one(const int day,
 }
 
 double likelihood(const parameters& pars,
+                  const int n,
                   const double * infecteds,
                   const std::vector<double>& cum_infecteds,
                   const observed& viralload,
@@ -161,19 +165,22 @@ double likelihood(const parameters& pars,
   for (int i = 0; i < len; ++i) {
     const int day = viralload.day[i] - 1;
     auto& state = rng->state(day);
-    ret += likelihood_one(day, pars, infecteds, cum_infecteds,
+    ret += likelihood_one(day, pars, n, infecteds, cum_infecteds,
                           viralload, population, tested_population[day],
                           state);
   }
   return ret;
 }
 
-std::vector<double> cumsum(cpp11::doubles x) {
+std::vector<double> cumsum(cpp11::doubles x, int n) {
   double tot = 0;
+  double tot2 = 0;
   std::vector<double> ret(x.size());
   for (int i = 0; i < x.size(); ++i) {
     tot += x[i];
-    ret[i] = tot;
+    if(i>=n) tot2 += x[i-n];
+    else tot2 = 0;
+    ret[i] = tot-tot2;
   }
   return ret;
 }
@@ -184,6 +191,7 @@ std::vector<double> cumsum(cpp11::doubles x) {
 [[cpp11::register]]
 double r_likelihood_one(int r_day,
                         cpp11::list r_pars,
+                        int n,
                         cpp11::doubles r_infecteds,
                         cpp11::list r_viralload,
                         int population,
@@ -193,7 +201,7 @@ double r_likelihood_one(int r_day,
   const int day = r_day - 1;
   const viralload::parameters pars(r_pars);
   const double * infecteds = REAL(r_infecteds);
-  const auto cum_infecteds = viralload::cumsum(r_infecteds);
+  const auto cum_infecteds = viralload::cumsum(r_infecteds, n);
   const viralload::observed viralload(r_viralload);
   auto rng =
     dust::random::r::rng_pointer_get<rng_state_type>(r_rng, viralload.size_full);
@@ -201,13 +209,14 @@ double r_likelihood_one(int r_day,
   // Same generator as we'd use with likelihood
   auto& state = rng->state(day);
 
-  return viralload::likelihood_one(day, pars, infecteds, cum_infecteds,
+  return viralload::likelihood_one(day, pars, n, infecteds, cum_infecteds,
                                    viralload, population, tested_population,
                                    state);
 }
 
 [[cpp11::register]]
 double r_likelihood(cpp11::list r_pars,
+                    int n,
                     cpp11::doubles r_infecteds,
                     cpp11::list r_viralload,
                     int population,
@@ -218,13 +227,13 @@ double r_likelihood(cpp11::list r_pars,
   using rng_state_type = viralload::rng_state_type;
   const viralload::parameters pars(r_pars);
   const double * infecteds = REAL(r_infecteds);
-  const auto cum_infecteds = viralload::cumsum(r_infecteds);
+  const auto cum_infecteds = viralload::cumsum(r_infecteds, n);
   const viralload::observed viralload(r_viralload);
   const int * tested_population = INTEGER(r_tested_population);
   auto rng =
     dust::random::r::rng_pointer_get<rng_state_type>(r_rng, viralload.size_full);
 
-  return viralload::likelihood(pars, infecteds, cum_infecteds,
+  return viralload::likelihood(pars, n, infecteds, cum_infecteds,
                                viralload, population, tested_population,
                                rng, n_threads, chunk_size);
 }
