@@ -27,7 +27,7 @@
 ##'
 ##' @export
 ##' @return A single numeric log-likelihood value
-log_likelihood <- function(pars, n, infected, observed,
+log_likelihood <- function(pars, n, k, infected, observed,
                            population, tested_population, rng,
                            n_threads = 1L, chunk_size = NULL) {
   if (is.null(chunk_size)) {
@@ -49,7 +49,7 @@ log_likelihood <- function(pars, n, infected, observed,
   }
   ## Ensure integer storage
   tested_population <- as.integer(tested_population)
-  r_likelihood(pars, n, infected, observed, population, tested_population, rng,
+  r_likelihood(pars, n, k, infected, observed, population, tested_population, rng,
                n_threads, chunk_size)
 }
 
