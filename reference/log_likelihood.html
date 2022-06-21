@@ -68,29 +68,46 @@
 <dd><p>Named list of parameters. Must have elements <code>a_bar</code>,
 <code>a_sigma</code>, <code>b_bar</code>, <code>b_sigma</code>, <code>tmax_bar</code>, <code>tmax_sigma</code>,
 <code>log_vlmax_bar</code>, <code>log_vlmax_sigma</code></p></dd>
+
+
 <dt>infected</dt>
 <dd><p>Vector of number of simulated infections. Must
 have length <code>observed$size_full</code> (this is checked)</p></dd>
+
+
 <dt>observed</dt>
 <dd><p>An <code>observed</code> object, created by <code>prepare_observed</code></p></dd>
+
+
 <dt>population</dt>
 <dd><p>Integer, size of population</p></dd>
+
+
 <dt>tested_population</dt>
 <dd><p>Integer, size of tested population</p></dd>
+
+
 <dt>rng</dt>
 <dd><p>A random number pointer, created by
 <a href="https://rdrr.io/pkg/dust/man/dust_rng_pointer.html" class="external-link">dust::dust_rng_pointer</a></p></dd>
+
+
 <dt>n_threads</dt>
 <dd><p>Number of threads to run on, if openmp available.
 See <a href="https://rdrr.io/pkg/dust/man/dust_openmp_threads.html" class="external-link">dust::dust_openmp_threads</a> for guidance</p></dd>
+
+
 <dt>chunk_size</dt>
 <dd><p>The size of the chunks to run the parallel jobs
 in.  The optimal value here will vary depending on your problem
 and number of threads. '5' seems like a good guess.</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>A single numeric log-likelihood value</p>
+    
+
+<p>A single numeric log-likelihood value</p>
     </div>
 
   </div>
@@ -105,7 +122,7 @@ and number of threads. '5' seems like a good guess.</p></dd>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.2.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.4.</p>
 </div>
 
       </footer></div>
