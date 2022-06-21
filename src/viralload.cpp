@@ -83,7 +83,7 @@ int vl_func(double a, double b, double tmax, double t, double log_vlmax, int k, 
   //  }
   //  else value_raw=-1000;
   //}
-  forty_minus_ct = 2.067 + 1.418 * std::log(pow(10,value_raw));
+  forty_minus_ct = -4.87 + 1.418 * std::log(pow(10,value_raw));
   
   if(cap==0) value = std::floor(forty_minus_ct);
   if(cap==1) value = std::min(std::floor(forty_minus_ct),30.0);
