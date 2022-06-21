@@ -11,6 +11,7 @@
 To install `viralload`:
 
 ```r
+pkgload::load_all("viralload")
 remotes::install_github("mrc-ide/viralload", upgrade = FALSE)
 ```
 

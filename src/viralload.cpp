@@ -58,18 +58,50 @@ struct observed {
   const int * value;
 };
 
-// TODO: a nicer name here would be good
-int vl_func(double a, double b, double tmax, double t, double log_vlmax) {
-  const auto tau = t - tmax;
-  const auto value = std::log10(std::pow(10, log_vlmax) * (a + b) /
-                                (b * std::exp(-a * tau) + a * exp(b * tau)));
-  return std::floor(value);
+// TODO: a nicer name here would be goodd
+int vl_func(double a, double b, double tmax, double t, double log_vlmax, int k, int cap) {
+  double tau;
+  double value_raw;
+  double forty_minus_ct;
+  int value; 
+  //double tmax2;
+  
+  if(k==1){
+    tau = t - tmax;
+    if(a>0  && log_vlmax > -3) value_raw = std::log10(std::pow(10, log_vlmax) * (a + b) / (b * std::exp(-a * tau) + a * exp(b * tau)));
+    else value_raw = -1000;
+  }
+  if(k==2){
+    tau = (log_vlmax+tmax)/std::exp(a);
+    if(t < tau) value_raw = std::exp(a)*t-tmax;
+    if(t >= tau) value_raw = (1+std::exp(b)/std::exp(a))*log_vlmax + std::exp(b)*tmax/std::exp(a) - std::exp(b)*t; 
+  }
+  //if(k==3){
+  // if(a>0 && log_vlmax > -3){
+  //    tmax2 = (1/a) * std::log(b*(pow(10,-tmax))/((pow(10,log_vlmax))*(a+b)));
+  //    value_raw = std::log10(pow(10,log_vlmax)*(a+b)/(b*exp(-a*(t+tmax2))+a*exp(b*(t+tmax2))));
+  //  }
+  //  else value_raw=-1000;
+  //}
+  forty_minus_ct = -4.87 + 1.418 * std::log(pow(10,value_raw));
+  
+  if(cap==0) value = std::floor(forty_minus_ct);
+  if(cap==1) value = std::min(std::floor(forty_minus_ct),30.0);
+  
+  //if(cap==0) value = std::floor(value_raw);
+  //if(cap==1) value = std::min(std::floor(value_raw),9.0);
+  
+  return value;
+  
 }
 
 // Could pass just 1 cum_infecteds, but I don't think there's any
 // strong reason to do so.
 double likelihood_one(const int day,
                       const parameters& pars,
+                      const int n,
+                      const int k,
+                      const int cap,
                       const double* infecteds,
                       const std::vector<double>& cum_infecteds,
                       const observed& viralload,
@@ -83,8 +115,18 @@ double likelihood_one(const int day,
 
   // NOTE: can be skipped
   std::vector<double> prob(day + 1);
-  for (int i = 0; i <= day; ++i) {
-    prob[i] = infecteds[day - i] / cum_infecteds[day];
+  
+  if(n == 0){
+    for (int i = 0; i <= day; ++i) {
+      prob[i] = infecteds[day - i] / cum_infecteds[day];
+    }
+  }
+  
+  else{
+    for (int i = 0; i <= day; ++i) {
+      if(i >= n) prob[i] = 0;
+      else prob[i] = infecteds[day - i] / cum_infecteds[day];
+    }
   }
 
   // Because this will run from openmp, we will crash if this fails
@@ -125,7 +167,7 @@ double likelihood_one(const int day,
       t_sample_seen++;
     }
 
-    const auto vl = vl_func(a, b, tmax, t_sample_curr, log_vlmax);
+    const auto vl = vl_func(a, b, tmax, t_sample_curr, log_vlmax, k, cap);
     const size_t vl_tab_pos = std::max(vl + vl_offset, 0);
     if (vl_tab_pos < vl_tab.size()) {
       vl_tab[vl_tab_pos]++;
@@ -144,6 +186,9 @@ double likelihood_one(const int day,
 }
 
 double likelihood(const parameters& pars,
+                  const int n,
+                  const int k,
+                  const int cap,
                   const double * infecteds,
                   const std::vector<double>& cum_infecteds,
                   const observed& viralload,
@@ -161,20 +206,35 @@ double likelihood(const parameters& pars,
   for (int i = 0; i < len; ++i) {
     const int day = viralload.day[i] - 1;
     auto& state = rng->state(day);
-    ret += likelihood_one(day, pars, infecteds, cum_infecteds,
+    ret += likelihood_one(day, pars, n, k, cap, infecteds, cum_infecteds,
                           viralload, population, tested_population[day],
                           state);
   }
   return ret;
 }
 
-std::vector<double> cumsum(cpp11::doubles x) {
-  double tot = 0;
+std::vector<double> cumsum(cpp11::doubles x, int n) {
   std::vector<double> ret(x.size());
-  for (int i = 0; i < x.size(); ++i) {
-    tot += x[i];
-    ret[i] = tot;
+  
+  if(n == 0){
+    double tot = 0;
+    for (int i = 0; i < x.size(); ++i) {
+      tot += x[i];
+      ret[i] = tot;
+    }
   }
+  
+  else{
+    double tot = 0;
+    double tot2 = 0;
+    for (int i = 0; i < x.size(); ++i) {
+      tot += x[i];
+      if(i>=n) tot2 += x[i-n];
+      else tot2 = 0;
+      ret[i] = tot-tot2;
+    }
+  }
+  
   return ret;
 }
 
@@ -184,6 +244,9 @@ std::vector<double> cumsum(cpp11::doubles x) {
 [[cpp11::register]]
 double r_likelihood_one(int r_day,
                         cpp11::list r_pars,
+                        int n,
+                        int k,
+                        int cap,
                         cpp11::doubles r_infecteds,
                         cpp11::list r_viralload,
                         int population,
@@ -193,7 +256,7 @@ double r_likelihood_one(int r_day,
   const int day = r_day - 1;
   const viralload::parameters pars(r_pars);
   const double * infecteds = REAL(r_infecteds);
-  const auto cum_infecteds = viralload::cumsum(r_infecteds);
+  const auto cum_infecteds = viralload::cumsum(r_infecteds, n);
   const viralload::observed viralload(r_viralload);
   auto rng =
     dust::random::r::rng_pointer_get<rng_state_type>(r_rng, viralload.size_full);
@@ -201,13 +264,16 @@ double r_likelihood_one(int r_day,
   // Same generator as we'd use with likelihood
   auto& state = rng->state(day);
 
-  return viralload::likelihood_one(day, pars, infecteds, cum_infecteds,
+  return viralload::likelihood_one(day, pars, n, k, cap, infecteds, cum_infecteds,
                                    viralload, population, tested_population,
                                    state);
 }
 
 [[cpp11::register]]
 double r_likelihood(cpp11::list r_pars,
+                    int n,
+                    int k,
+                    int cap,
                     cpp11::doubles r_infecteds,
                     cpp11::list r_viralload,
                     int population,
@@ -218,13 +284,13 @@ double r_likelihood(cpp11::list r_pars,
   using rng_state_type = viralload::rng_state_type;
   const viralload::parameters pars(r_pars);
   const double * infecteds = REAL(r_infecteds);
-  const auto cum_infecteds = viralload::cumsum(r_infecteds);
+  const auto cum_infecteds = viralload::cumsum(r_infecteds, n);
   const viralload::observed viralload(r_viralload);
   const int * tested_population = INTEGER(r_tested_population);
   auto rng =
     dust::random::r::rng_pointer_get<rng_state_type>(r_rng, viralload.size_full);
 
-  return viralload::likelihood(pars, infecteds, cum_infecteds,
+  return viralload::likelihood(pars, n, k, cap, infecteds, cum_infecteds,
                                viralload, population, tested_population,
                                rng, n_threads, chunk_size);
 }
