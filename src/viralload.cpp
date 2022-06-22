@@ -83,6 +83,7 @@ int vl_func(double a, double b, double tmax, double t, double log_vlmax, int k, 
   //  }
   //  else value_raw=-1000;
   //}
+  // pull numbers into variables so clear where from
   forty_minus_ct = -4.87 + 1.418 * std::log(pow(10,value_raw));
   
   if(cap==0) value = std::floor(forty_minus_ct);
