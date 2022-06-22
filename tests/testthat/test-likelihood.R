@@ -7,19 +7,20 @@
 ## suspect that there could be a bug lurking there too.
 test_that("calculation agrees with the R version for one day", {
   dat <- reference()
+  dat$tested_population <- 1e6
   observed <- prepare_observed(dat$observed)
   rng <- test_rng_pointer(observed)
   day <- 30L
   y <- replicate(
     30,
-    r_likelihood_one(day, dat$pars, dat$infected, observed,
+    r_likelihood_one(day, dat$pars, n=30, k=2, cap=1, dat$infected, observed,
                      dat$population, dat$tested_population, rng))
   set.seed(1)
   cmp <- replicate(
     30,
-    dat$calculate(day, dat$infected, dat$observed,
-                  dat$population, dat$tested_population,
-                  dat$pars))
+    dat$calculate(day=day, infecteds=dat$infected, observed=dat$observed,
+                  population=dat$population, tested_population=dat$tested_population,
+                  pars=dat$pars))
 
   expect_gt(t.test(y, cmp)$p.value, 0.05)
 })
@@ -33,11 +34,11 @@ test_that("calculation is sum over days", {
   rng1 <- test_rng_pointer(observed)
   rng2 <- test_rng_pointer(observed)
 
-  ll1 <- log_likelihood(dat$pars, dat$infected, observed,
+  ll1 <- log_likelihood(dat$pars, n=30, k=2, cap=1, dat$infected, observed,
                         dat$population, dat$tested_population,
                         rng1)
   ll2 <- vapply(observed$day, r_likelihood_one, numeric(1),
-                dat$pars, dat$infected, observed,
+                dat$pars, n=30, k=2, cap=1, dat$infected, observed,
                 dat$population, dat$tested_population, rng2)
   expect_equal(ll1, sum(ll2))
 })
@@ -52,11 +53,11 @@ test_that("calculation is sum over days when testing varies", {
 
   tested_population <- rpois(observed$size_full, 1e6)
 
-  ll1 <- log_likelihood(dat$pars, dat$infected, observed,
+  ll1 <- log_likelihood(dat$pars, n=30, k=2, cap=1, dat$infected, observed,
                         dat$population, tested_population,
                         rng1)
   ll2 <- vapply(10:100, function(day)
-    r_likelihood_one(day, dat$pars, dat$infected, observed,
+    r_likelihood_one(day, dat$pars, n=30, k=2, cap=1, dat$infected, observed,
                      dat$population, tested_population[day], rng2),
     numeric(1))
 
@@ -69,7 +70,7 @@ test_that("Check that infected is the correct size", {
   observed <- prepare_observed(dat$observed)
   rng <- test_rng_pointer(observed)
   expect_error(
-    log_likelihood(dat$pars, dat$infected[-1], observed,
+    log_likelihood(dat$pars, n=30, k=2, cap=1, dat$infected[-1], observed,
                    dat$population, dat$tested_population,
                    rng),
     "Expected observed to have length '100'")
@@ -110,7 +111,7 @@ test_that("tested_population must be of suitable length", {
   tested_population <- rep(1e6, observed$size_full - 1)
 
   expect_error(
-    log_likelihood(dat$pars, dat$infected, observed,
+    log_likelihood(dat$pars, n=30, k=2, cap=1, dat$infected, observed,
                    dat$population, tested_population,
                    rng),
     "Expected 'tested_population' to be a scalar or vector of length 100")
@@ -129,12 +130,12 @@ test_that("calculation is sum over days", {
 
   ## TODO: what is the expectation here?
   rng1 <- test_rng_pointer(observed_empty)
-  ll1 <- log_likelihood(dat$pars, dat$infected, observed_empty,
+  ll1 <- log_likelihood(dat$pars, n=30, k=2, cap=1, dat$infected, observed_empty,
                        dat$population, dat$tested_population,
                        rng1)
 
   rng2 <- test_rng_pointer(observed_full)
-  ll2 <- vapply(observed_empty$day, r_likelihood_one, numeric(1),
+  ll2 <- vapply(observed_empty$day, r_likelihood_one, n=30, k=2, cap=1, numeric(1),
                 dat$pars, dat$infected, observed_full,
                 dat$population, dat$tested_population, rng2)
 
