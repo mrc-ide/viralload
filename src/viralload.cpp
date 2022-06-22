@@ -71,7 +71,7 @@ int vl_func(double a, double b, double tmax, double t, double log_vlmax, int k, 
     if(a>0  && log_vlmax > -3) value_raw = std::log10(std::pow(10, log_vlmax) * (a + b) / (b * std::exp(-a * tau) + a * exp(b * tau)));
     else value_raw = -1000;
   }
-  if(k==2){
+  else{
     tau = (log_vlmax+tmax)/std::exp(a);
     if(t < tau) value_raw = std::exp(a)*t-tmax;
     if(t >= tau) value_raw = (1+std::exp(b)/std::exp(a))*log_vlmax + std::exp(b)*tmax/std::exp(a) - std::exp(b)*t; 
@@ -86,7 +86,7 @@ int vl_func(double a, double b, double tmax, double t, double log_vlmax, int k, 
   forty_minus_ct = -4.87 + 1.418 * std::log(pow(10,value_raw));
   
   if(cap==0) value = std::floor(forty_minus_ct);
-  if(cap==1) value = std::min(std::floor(forty_minus_ct),30.0);
+  else value = std::min(std::floor(forty_minus_ct),30.0);
   
   //if(cap==0) value = std::floor(value_raw);
   //if(cap==1) value = std::min(std::floor(value_raw),9.0);

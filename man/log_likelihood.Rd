@@ -6,6 +6,9 @@
 \usage{
 log_likelihood(
   pars,
+  n,
+  k,
+  cap,
   infected,
   observed,
   population,
