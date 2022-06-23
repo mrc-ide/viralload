@@ -8,6 +8,12 @@
 ##'
 ##' @param infected Vector of number of simulated infections. Must
 ##'   have length `observed$size_full` (this is checked)
+##'   
+##' @param n number of days to truncate infectiousness at
+##' 
+##' @param k index of the viral load equation to use
+##' 
+##' @param cap whether to apply a cap to the value of the maximum viral load to avoid NAN errors
 ##'
 ##' @param observed An `observed` object, created by `prepare_observed`
 ##'

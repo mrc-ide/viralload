@@ -6,6 +6,9 @@
 \usage{
 log_likelihood(
   pars,
+  n,
+  k,
+  cap,
   infected,
   observed,
   population,
@@ -19,6 +22,12 @@ log_likelihood(
 \item{pars}{Named list of parameters. Must have elements \code{a_bar},
 \code{a_sigma}, \code{b_bar}, \code{b_sigma}, \code{tmax_bar}, \code{tmax_sigma},
 \code{log_vlmax_bar}, \code{log_vlmax_sigma}}
+
+\item{n}{number of days to truncate infectiousness at}
+
+\item{k}{index of the viral load equation to use}
+
+\item{cap}{whether to apply a cap to the value of the maximum viral load to avoid NAN errors}
 
 \item{infected}{Vector of number of simulated infections. Must
 have length \code{observed$size_full} (this is checked)}

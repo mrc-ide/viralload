@@ -1,6 +1,6 @@
 Package: viralload
 Title: Time Varying Sampling from Time Varying Functions
-Version: 0.1.4
+Version: 0.1.6
 Authors@R: c(person("Will", "Green", role = c("aut", "cre"),
                     email = "rich.fitzjohn@gmail.com"),
              person("Rich", "FitzJohn", role = c("aut"),
