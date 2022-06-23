@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">viralload</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.4</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.6</span>
       </span>
     </div>
 
@@ -52,6 +52,9 @@
     <div id="ref-usage">
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">log_likelihood</span><span class="op">(</span>
   <span class="va">pars</span>,
+  <span class="va">n</span>,
+  <span class="va">k</span>,
+  <span class="va">cap</span>,
   <span class="va">infected</span>,
   <span class="va">observed</span>,
   <span class="va">population</span>,
@@ -68,6 +71,18 @@
 <dd><p>Named list of parameters. Must have elements <code>a_bar</code>,
 <code>a_sigma</code>, <code>b_bar</code>, <code>b_sigma</code>, <code>tmax_bar</code>, <code>tmax_sigma</code>,
 <code>log_vlmax_bar</code>, <code>log_vlmax_sigma</code></p></dd>
+
+
+<dt>n</dt>
+<dd><p>number of days to truncate infectiousness at</p></dd>
+
+
+<dt>k</dt>
+<dd><p>index of the viral load equation to use</p></dd>
+
+
+<dt>cap</dt>
+<dd><p>whether to apply a cap to the value of the maximum viral load to avoid NAN errors</p></dd>
 
 
 <dt>infected</dt>
