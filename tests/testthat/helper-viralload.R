@@ -5,10 +5,10 @@ vl_func <- function(a, b, tmax, t, log_vlmax, k, cap) {
     tau = (log_vlmax+tmax)/exp(a)
     vl =  ifelse(t < tau, exp(a)*t-tmax, (1+exp(b)/exp(a))*log_vlmax + exp(b)*tmax/exp(a) - exp(b)*t)
   }
-  
+
   vl <- floor(-4.87 + 1.418 * log(10^vl))
-  if(cap==1) vl <- pmin(vl, 30)
-  
+  vl <- pmin(vl, 30)
+
 }
 
 vl_dist_day2 <- function(day, infecteds, cum_infecteds, population,
@@ -86,8 +86,8 @@ reference <- function() {
                    tmax_params = tmax_params,
                    log_vlmax_params = log_vlmax_params,
                    negatives = TRUE,
-                   observed=observed[[day]]$count, 
-                   k=2, 
+                   observed=observed[[day]]$count,
+                   k=2,
                    cap=1)
   }
 

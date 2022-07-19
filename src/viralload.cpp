@@ -59,13 +59,13 @@ struct observed {
 };
 
 // TODO: a nicer name here would be goodd
-int vl_func(double a, double b, double tmax, double t, double log_vlmax, int k, int cap) {
+int vl_func(double a, double b, double tmax, double t, double log_vlmax, int k, double cap) {
   double tau;
   double value_raw;
   double forty_minus_ct;
-  int value; 
+  double value;
   //double tmax2;
-  
+
   if(k==1){
     tau = t - tmax;
     if(a>0  && log_vlmax > -3) value_raw = std::log10(std::pow(10, log_vlmax) * (a + b) / (b * std::exp(-a * tau) + a * exp(b * tau)));
@@ -74,26 +74,15 @@ int vl_func(double a, double b, double tmax, double t, double log_vlmax, int k, 
   else{
     tau = (log_vlmax+tmax)/std::exp(a);
     if(t < tau) value_raw = std::exp(a)*t-tmax;
-    if(t >= tau) value_raw = (1+std::exp(b)/std::exp(a))*log_vlmax + std::exp(b)*tmax/std::exp(a) - std::exp(b)*t; 
+    if(t >= tau) value_raw = (1+std::exp(b)/std::exp(a))*log_vlmax + std::exp(b)*tmax/std::exp(a) - std::exp(b)*t;
   }
-  //if(k==3){
-  // if(a>0 && log_vlmax > -3){
-  //    tmax2 = (1/a) * std::log(b*(pow(10,-tmax))/((pow(10,log_vlmax))*(a+b)));
-  //    value_raw = std::log10(pow(10,log_vlmax)*(a+b)/(b*exp(-a*(t+tmax2))+a*exp(b*(t+tmax2))));
-  //  }
-  //  else value_raw=-1000;
-  //}
-  // pull numbers into variables so clear where from
+
   forty_minus_ct = -4.87 + 1.418 * std::log(pow(10,value_raw));
-  
-  if(cap==0) value = std::floor(forty_minus_ct);
-  else value = std::min(std::floor(forty_minus_ct),30.0);
-  
-  //if(cap==0) value = std::floor(value_raw);
-  //if(cap==1) value = std::min(std::floor(value_raw),9.0);
-  
+
+  value = std::min(std::floor(forty_minus_ct),cap);
+
   return value;
-  
+
 }
 
 // Could pass just 1 cum_infecteds, but I don't think there's any
@@ -116,13 +105,13 @@ double likelihood_one(const int day,
 
   // NOTE: can be skipped
   std::vector<double> prob(day + 1);
-  
+
   if(n == 0){
     for (int i = 0; i <= day; ++i) {
       prob[i] = infecteds[day - i] / cum_infecteds[day];
     }
   }
-  
+
   else{
     for (int i = 0; i <= day; ++i) {
       if(i >= n) prob[i] = 0;
@@ -216,7 +205,7 @@ double likelihood(const parameters& pars,
 
 std::vector<double> cumsum(cpp11::doubles x, int n) {
   std::vector<double> ret(x.size());
-  
+
   if(n == 0){
     double tot = 0;
     for (int i = 0; i < x.size(); ++i) {
@@ -224,7 +213,7 @@ std::vector<double> cumsum(cpp11::doubles x, int n) {
       ret[i] = tot;
     }
   }
-  
+
   else{
     double tot = 0;
     double tot2 = 0;
@@ -235,7 +224,7 @@ std::vector<double> cumsum(cpp11::doubles x, int n) {
       ret[i] = tot-tot2;
     }
   }
-  
+
   return ret;
 }
 
