@@ -59,11 +59,11 @@ struct observed {
 };
 
 // TODO: a nicer name here would be goodd
-int vl_func(double a, double b, double tmax, double t, double log_vlmax, int k, int cap) {
+int vl_func(double a, double b, double tmax, double t, double log_vlmax, int k, double cap) {
   double tau;
   double value_raw;
   double forty_minus_ct;
-  int value;
+  double value;
   //double tmax2;
 
   if(k==1){
@@ -79,8 +79,7 @@ int vl_func(double a, double b, double tmax, double t, double log_vlmax, int k, 
 
   forty_minus_ct = -4.87 + 1.418 * std::log(pow(10,value_raw));
 
-  if(cap==0.0) value = std::floor(forty_minus_ct);
-  else value = min(std::floor(forty_minus_ct),cap);
+  value = std::min(std::floor(forty_minus_ct),cap);
 
   return value;
 
