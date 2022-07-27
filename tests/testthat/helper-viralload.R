@@ -19,6 +19,8 @@ vl_dist_day2 <- function(day, infecteds, cum_infecteds, population,
   ever_infected_tested <- round(tested_population * proportion_ever_infected, 0)
   never_infected_tested <- tested_population - ever_infected_tested
 
+  positives_tested <- 1000000                                           ######
+
   # block takes ~ 0.13s
   a_test <- rnorm(ever_infected_tested, a_params[1], a_params[2])
   b_test <- rnorm(ever_infected_tested, b_params[1], b_params[2])
@@ -26,21 +28,44 @@ vl_dist_day2 <- function(day, infecteds, cum_infecteds, population,
   log_vlmax_test <- rnorm(ever_infected_tested, log_vlmax_params[1],
                           log_vlmax_params[2])
 
+
+  a_test2 <- rnorm(positives_tested, a_params[1], a_params[2])          #####
+  b_test2 <- rnorm(positives_tested, b_params[1], b_params[2])          #####
+  tmax_test2 <- rnorm(positives_tested, tmax_params[1], tmax_params[2]) #####
+  log_vlmax_test2 <- rnorm(positives_tested, log_vlmax_params[1],       #####
+                          log_vlmax_params[2])                          #####
+
+
   prob <- infecteds[day:1] / cum_infecteds[day]
   t_sample <- rmultinom(1, ever_infected_tested, prob)
   t_sample_test <- rep(seq_along(t_sample) - 1L, t_sample)
 
+  t_sample2 <- rmultinom(1, positives_tested, prob)                     #####
+  t_sample_test2 <- rep(seq_along(t_sample2) - 1L, t_sample2)           #####
+
   vl <- floor(vl_func(a_test, b_test, tmax_test, t_sample_test,
                       log_vlmax_test, k, cap))
+
+  vl2 <- floor(vl_func(a_test2, b_test2, tmax_test2, t_sample_test2,    #####
+                       log_vlmax_test2, k, cap))                        #####
+
   # block takes ~ 0.1s
   vl_indiv <- data.frame(
     individual = seq_len(ever_infected_tested),
     vl = vl)
 
+  vl_indiv2 <- data.frame(                   #####
+    individual = seq_len(positives_tested),  #####
+    vl = vl2)                                #####
+
   ## Several ways of doing this, but this one will be fairly fast
   vl_max <- max(vl)
   vl_tab <- tabulate(pmax(vl, -6) + 7, vl_max + 7)
   vl_tab[[1L]] <- vl_tab[[1L]] + never_infected_tested
+
+  vl_max2 <- max(vl2)                                                                                  #####
+  vl_tab2 <- round(tabulate(pmax(vl2, -6) + 7, vl_max2 + 7) * ever_infected_tested/positives_tested,0) #####
+  vl_tab2[[1L]] <- vl_tab2[[1L]] + never_infected_tested                                               #####
 
   len <- max(length(vl_tab), length(observed))
   pad <- function(x, n) {
@@ -52,6 +77,8 @@ vl_dist_day2 <- function(day, infecteds, cum_infecteds, population,
   }
 
   sum(pad(observed, len) * log(pad(vl_tab / tested_population, len)))
+  sum(pad(observed, len) * log(pad(vl_tab2 / tested_population, len))) #####
+
 }
 
 

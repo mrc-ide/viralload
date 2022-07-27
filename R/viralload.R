@@ -8,12 +8,14 @@
 ##'
 ##' @param infected Vector of number of simulated infections. Must
 ##'   have length `observed$size_full` (this is checked)
-##'   
+##'
 ##' @param n number of days to truncate infectiousness at
-##' 
+##'
 ##' @param k index of the viral load equation to use
-##' 
+##'
 ##' @param cap whether to apply a cap to the value of the maximum viral load to avoid NAN errors
+##'
+##' @param tested_positive when 0 use standard test when not zero test 100k positives a day
 ##'
 ##' @param observed An `observed` object, created by `prepare_observed`
 ##'
@@ -33,7 +35,7 @@
 ##'
 ##' @export
 ##' @return A single numeric log-likelihood value
-log_likelihood <- function(pars, n, k, cap, infected, observed,
+log_likelihood <- function(pars, n, k, cap, tested_positives, infected, observed,
                            population, tested_population, rng,
                            n_threads = 1L, chunk_size = NULL) {
   if (is.null(chunk_size)) {
@@ -55,7 +57,7 @@ log_likelihood <- function(pars, n, k, cap, infected, observed,
   }
   ## Ensure integer storage
   tested_population <- as.integer(tested_population)
-  r_likelihood(pars, n, k, cap, infected, observed, population, tested_population, rng,
+  r_likelihood(pars, n, k, cap, tested_positives, infected, observed, population, tested_population, rng,
                n_threads, chunk_size)
 }
 

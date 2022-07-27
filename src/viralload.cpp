@@ -92,6 +92,7 @@ double likelihood_one(const int day,
                       const int n,
                       const int k,
                       const int cap,
+                      const int tested_positives,
                       const double* infecteds,
                       const std::vector<double>& cum_infecteds,
                       const observed& viralload,
@@ -105,6 +106,7 @@ double likelihood_one(const int day,
 
   // NOTE: can be skipped
   std::vector<double> prob(day + 1);
+  double plum;
 
   if(n == 0){
     for (int i = 0; i <= day; ++i) {
@@ -123,7 +125,11 @@ double likelihood_one(const int day,
   // for any reason.
   std::vector<int> t_sample(prob.size());
   int * t_sample_data = t_sample.data();
-  dust::random::multinomial<double>(state, ever_infected_tested, prob.data(),
+
+  if(tested_positives==0) dust::random::multinomial<double>(state, ever_infected_tested, prob.data(),
+                                    prob.size(), t_sample_data);
+
+  else dust::random::multinomial<double>(state, tested_positives, prob.data(),
                                     prob.size(), t_sample_data);
 
   const int observed_vl_size = viralload.length[day];
@@ -135,7 +141,11 @@ double likelihood_one(const int day,
 
   int t_sample_curr = 0;
   int t_sample_seen = 0;
-  for (int i = 0; i < ever_infected_tested; ++i) {
+
+  if(tested_positives==0) plum = ever_infected_tested;
+  else plum = tested_positives;
+
+  for (int i = 0; i < plum; ++i) {
     // We'll tidy this up later, see
     // https://github.com/mrc-ide/dust/issues/323
     using dust::random::normal;
@@ -164,6 +174,8 @@ double likelihood_one(const int day,
     }
   }
 
+  if(tested_positives != 0) for(size_t i=0; i<vl_tab.size(); ++i) vl_tab[i] = std::round(vl_tab[i] * ever_infected_tested/tested_positives);
+
   vl_tab[0] += never_infected_tested;
 
   double ret = 0.0;
@@ -179,6 +191,7 @@ double likelihood(const parameters& pars,
                   const int n,
                   const int k,
                   const int cap,
+                  const int tested_positives,
                   const double * infecteds,
                   const std::vector<double>& cum_infecteds,
                   const observed& viralload,
@@ -196,7 +209,7 @@ double likelihood(const parameters& pars,
   for (int i = 0; i < len; ++i) {
     const int day = viralload.day[i] - 1;
     auto& state = rng->state(day);
-    ret += likelihood_one(day, pars, n, k, cap, infecteds, cum_infecteds,
+    ret += likelihood_one(day, pars, n, k, cap, tested_positives, infecteds, cum_infecteds,
                           viralload, population, tested_population[day],
                           state);
   }
@@ -237,6 +250,7 @@ double r_likelihood_one(int r_day,
                         int n,
                         int k,
                         int cap,
+                        int tested_positives,
                         cpp11::doubles r_infecteds,
                         cpp11::list r_viralload,
                         int population,
@@ -254,7 +268,7 @@ double r_likelihood_one(int r_day,
   // Same generator as we'd use with likelihood
   auto& state = rng->state(day);
 
-  return viralload::likelihood_one(day, pars, n, k, cap, infecteds, cum_infecteds,
+  return viralload::likelihood_one(day, pars, n, k, cap, tested_positives, infecteds, cum_infecteds,
                                    viralload, population, tested_population,
                                    state);
 }
@@ -264,6 +278,7 @@ double r_likelihood(cpp11::list r_pars,
                     int n,
                     int k,
                     int cap,
+                    int tested_positives,
                     cpp11::doubles r_infecteds,
                     cpp11::list r_viralload,
                     int population,
@@ -280,7 +295,7 @@ double r_likelihood(cpp11::list r_pars,
   auto rng =
     dust::random::r::rng_pointer_get<rng_state_type>(r_rng, viralload.size_full);
 
-  return viralload::likelihood(pars, n, k, cap, infecteds, cum_infecteds,
+  return viralload::likelihood(pars, n, k, cap, tested_positives, infecteds, cum_infecteds,
                                viralload, population, tested_population,
                                rng, n_threads, chunk_size);
 }
